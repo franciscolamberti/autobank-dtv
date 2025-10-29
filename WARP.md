@@ -1,194 +1,173 @@
-# sistema de análisis de distancias pickit
+# WARP.md
 
-## contexto del proyecto
+this file provides guidance to warp (warp.dev) when working with code in this repository.
 
-sistema para comparar ubicaciones de personas (clientes dtv) con puntos pickit (lugares de devolución de decodificadores) y filtrar solo aquellas personas que están a menos de 2000 metros de un punto pickit.
+## project overview
 
-## archivos de entrada
+whatsapp campaign management system for dtv decoder returns at nearby pickit points. processes excel files, calculates distances using haversine formula, deduplicates customers, and sends personalized whatsapp messages via kapso api.
 
-### archivo 1: puntos pickit
-- **archivo**: `PUNTOS PICKIT - AR - Red Dev_DO mktplc DTV.v2.xlsx`
-- **hoja**: "red total"
-- **columnas relevantes**:
-  - columna h (índice 7): latitud
-  - columna i (índice 8): longitud
-  - columna b (índice 1): nombre del punto
-  - columna c (índice 2): dirección
-- **total**: 81 puntos pickit
-- **nota**: este archivo se cargará en la base de datos y no se subirá cada vez
+## architecture
 
-### archivo 2: personas dtv
-- **archivo**: `formato ejemplo de info dtv.xlsx`
-- **hoja**: primera hoja del workbook
-- **columnas relevantes**:
-  - columna ag (índice 32): longitud (x)
-  - columna ah (índice 33): latitud (y)
-- **nota**: las coordenadas vienen sin punto decimal (ej: -34644255 = -34.644255)
-- **nota**: este archivo se subirá en cada análisis
+multi-tier system:
+- **frontend**: next.js 16 app in `/autobank-dtv`
+- **backend**: supabase (postgresql + storage)
+- **processing**: 3 supabase edge functions (deno)
+- **messaging**: cloudflare worker for scheduled/manual whatsapp sending
+- **external**: kapso api for whatsapp business
 
-## arquitectura decidida
+### key data flow
+1. user uploads excel → supabase storage
+2. `procesar-archivo` edge function processes file automatically
+3. calculates haversine distances to 26 pickit points
+4. deduplicates by phone, groups multiple decoders per person
+5. cloudflare worker sends messages (12:00-15:00 argentina time)
+6. `webhook-kapso` receives customer responses
 
-### stack tecnológico
+## development commands
 
-1. **frontend**: v0/nextjs
-2. **backend/database**: supabase
-3. **procesamiento**: supabase edge functions
-4. **storage**: supabase storage
-
-### componentes
-
-#### frontend (v0/nextjs) - pendiente
-- formulario de upload de 1 archivo (personas dtv)
-- selector de distancia máxima (default: 2000 metros)
-- visualización de resultados en tabla
-- opción de descarga de resultados
-
-#### backend (supabase)
-**tablas**:
-- `puntos_pickit`: ✅ creada y poblada con 26 puntos
-  - id (uuid, pk)
-  - nombre (text)
-  - direccion (text)
-  - lat (float)
-  - lon (float)
-  - created_at (timestamp)
-
-- `analisis`: ✅ creada
-  - id (uuid, pk)
-  - created_at (timestamp)
-  - archivo_url (text)
-  - distancia_max (int)
-  - total_personas (int)
-  - personas_cercanas (int)
-  - porcentaje (float)
-  - resultados (jsonb)
-
-**storage**: - pendiente
-- bucket `archivos-dtv`: para archivos excel subidos
-
-**edge functions**: - pendiente
-- `procesar-distancias`: recibe archivo excel, calcula distancias, guarda resultados
-
-#### edge function (supabase) - pendiente
-- **lógica**: migrada desde cloudflare worker
-- **código base**: disponible en `/Users/franciscolamberti/Library/Mobile Documents/com~apple~CloudDocs/worker-distancias/src/index.js`
-- **ventajas**: acceso directo a db, sin problemas de cors/waf, todo en supabase
-
-## flujo de usuario propuesto
-
-1. usuario accede al frontend
-2. usuario sube archivo excel de personas dtv
-3. frontend guarda archivo en supabase storage
-4. storage trigger activa edge function automáticamente
-5. edge function:
-   - obtiene archivo del storage
-   - consulta puntos pickit desde tabla (26 puntos pre-cargados)
-   - calcula distancias usando haversine
-   - guarda resultados en tabla `analisis`
-6. frontend consulta tabla `analisis` y muestra resultados
-7. usuario puede ver/descargar resultados
-
-## cálculo de distancias
-
-**fórmula**: haversine
-**implementación**: ya implementada en worker (javascript) y script python
-**radio de la tierra**: 6,371,000 metros
-
-## estado actual
-
-### completado ✅
-- script python local (`comparar_distancias.py`)
-- lógica de cálculo de distancias (javascript)
-- tabla `puntos_pickit` creada y poblada con 26 puntos
-- tabla `analisis` creada
-- csv de puntos pickit exportado
-
-### pendiente ⏳
-1. **configurar supabase storage**:
-   - crear bucket `archivos-dtv`
-   - configurar políticas de acceso
-   - configurar trigger on insert
-
-2. **crear edge function**:
-   - migrar lógica desde worker cloudflare
-   - conectar con storage y db
-   - implementar procesamiento xlsx
-   - guardar resultados en tabla `analisis`
-
-3. **crear frontend**:
-   - diseño en v0
-   - file uploader a supabase storage
-   - visualización de resultados desde tabla `analisis`
-   - opción de descarga
-
-### decisiones tomadas ✅
-- arquitectura: todo en supabase (edge functions + storage + db)
-- puntos pickit: 26 puntos pre-cargados en tabla
-- procesamiento: automático vía storage trigger
-- historial: sí, guardado en tabla `analisis`
-
-### decisiones pendientes ❓
-- ¿autenticación necesaria o público?
-- ¿visualización en mapa además de tabla?
-- ¿formato de descarga: excel, csv o ambos?
-
-## archivos del proyecto
-
-```
-~/Library/Mobile Documents/com~apple~CloudDocs/worker-distancias/
-├── WARP.md                         # este archivo - documentación completa
-├── src/
-│   └── index.js                # código del worker
-├── package.json
-├── wrangler.toml               # config cloudflare
-├── README.md                   # documentación del worker
-└── test-local.sh               # script de prueba local
-
-/Users/franciscolamberti/
-├── comparar_distancias.py          # script python local (funcional)
-└── crear_archivo_simple.py         # script para simplificar excel pickit
-```
-
-## archivos de datos
-
-```
-/Users/franciscolamberti/Downloads/
-├── PUNTOS PICKIT - AR - Red Dev_DO mktplc DTV.v2.xlsx  # 3.8mb - original
-├── PUNTOS_PICKIT_simple.xlsx                            # 13kb - simplificado
-├── Formato ejemplo de info DTV.xlsx                      # 10kb
-├── personas_cercanas_pickit.xlsx                        # resultados filtrados
-└── todas_personas_con_distancias.xlsx                   # resultados completos
-```
-
-## próximos pasos
-
-1. configurar supabase storage bucket
-2. crear edge function con lógica de procesamiento
-3. configurar storage trigger
-4. crear frontend en v0
-5. testear flujo end-to-end
-
-## comandos útiles
-
+### frontend (next.js)
 ```bash
-# desarrollo local del worker
-cd ~/Library/Mobile\ Documents/com~apple~CloudDocs/worker-distancias
-npm run dev
-
-# deploy del worker
-npm run deploy
-
-# ejecutar script python local
-python3 /Users/franciscolamberti/comparar_distancias.py
-
-# probar worker local
-./test-local.sh
+cd autobank-dtv
+npm install
+npm run dev        # start dev server
+npm run build      # production build
+npm run lint       # eslint
+npm start          # start production server
 ```
 
-## notas técnicas
+### cloudflare worker
+```bash
+npm install                          # install root dependencies
+wrangler dev                         # local worker testing
+wrangler deploy                      # deploy to cloudflare
+wrangler secret put SUPABASE_URL     # configure secrets
+```
 
-- se cambió de cloudflare workers a supabase edge functions para simplificar arquitectura
-- 26 puntos pickit disponibles (filtrados de los 81 originales)
-- edge functions tienen límite de 10s timeout y 2mb response
-- procesamiento asíncrono vía storage triggers
-- considerar rate limiting si se hace público
+**important**: worker has `DRY_RUN = true` flag at top of `src/enviar-campana.js` - change to false for production
+
+### supabase edge functions
+deployed via supabase cli (not managed from this repo):
+```bash
+supabase functions deploy procesar-archivo
+supabase functions deploy webhook-kapso
+supabase functions deploy recalcular-distancias
+```
+
+### testing
+```bash
+python3 generar_archivo_prueba.py    # generates test excel with 100 persons
+```
+
+## critical architectural details
+
+### haversine distance calculation
+implemented in both `procesar-archivo` edge function and potentially cloudflare worker. uses earth radius of 6,371,000 meters. coordinates in excel are in microdegrees (divided by 1,000,000 if > 180).
+
+### excel file format (dtv)
+- column ag (index 32): longitude
+- column ah (index 33): latitude
+- columns 37-40: phone numbers (priority 40 > 39 > 38 > 37)
+- column 28: customer name
+- column 0: customer number
+- column 1: work order number
+
+### deduplication logic
+**critical feature**: same person appears multiple times with different decoders. system groups by `telefono_principal`:
+- consolidates all `nro_cliente` and `nro_wo` into arrays
+- stores `cantidad_decos` count
+- sends single whatsapp message adapted for multiple decoders
+- reduces costs and improves customer experience
+
+**status**: documented in prd.md but not fully implemented yet (see progress.md)
+
+### time restrictions
+whatsapp messages only sent 12:00-15:00 argentina time (`America/Argentina/Buenos_Aires`). outside this window, messages marked as `encolado` (queued) and sent by cron job.
+
+### database schema
+three main tables:
+- `puntos_pickit`: 26 pre-loaded pickup points with lat/lon
+- `campañas`: campaign configuration (distancia_max defaults to 2000m)
+- `personas_contactar`: customers with location, distance, contact state
+
+state machine: `pendiente → encolado → enviado_whatsapp → respondio → confirmado/rechazado`
+
+## component locations
+
+### frontend structure
+```
+autobank-dtv/
+├── app/
+│   ├── page.tsx              # dashboard (campaign list)
+│   ├── campanas/
+│   │   └── nueva/            # 3-step wizard for new campaign
+│   └── layout.tsx
+├── components/               # shadcn/ui components
+└── lib/
+    └── supabase.ts          # supabase client config
+```
+
+### backend structure
+```
+supabase/functions/
+├── procesar-archivo/         # automatic excel processing
+├── webhook-kapso/            # receive customer responses
+└── recalcular-distancias/    # recalc when distancia_max changes
+```
+
+### worker
+```
+src/enviar-campana.js         # cloudflare worker (fetch + scheduled handlers)
+wrangler.toml                 # cron: "0 12 * * *" (12:00 utc)
+```
+
+## environment variables
+
+### frontend (.env.local)
+```
+NEXT_PUBLIC_SUPABASE_URL=
+NEXT_PUBLIC_SUPABASE_ANON_KEY=
+```
+
+### cloudflare worker (secrets)
+```
+SUPABASE_URL
+SUPABASE_SERVICE_ROLE_KEY    # needed for auth bypass
+KAPSO_API_KEY
+KAPSO_FLOW_ID
+KAPSO_WHATSAPP_CONFIG_ID
+```
+
+## kapso integration
+
+endpoint: `https://app.kapso.ai/api/v1/flows/{flow_id}/executions`
+
+payload includes:
+- `phone_number`: customer phone
+- `whatsapp_config_id`: kapso config
+- `variables`: personalized data (nombre_cliente, nro_cliente, cantidad_decos, punto_pickit, direccion_punto, distancia)
+- `context`: tracking info (campana_id, persona_id)
+
+## technical constraints
+
+- edge functions: 10s timeout, 2mb response limit
+- cloudflare workers: 30s cpu time, 50000ms limit in wrangler.toml
+- excel files: optimized for <10k rows
+- batch processing: 10 messages per batch, 1s delay between batches
+
+## pending work (from progress.md)
+
+1. **critical**: complete deduplication implementation (db migration + edge function + worker + frontend)
+2. implement `campañas/[id]` detail page with send button
+3. implement `campañas/[id]/personas` list page with filters
+4. deploy `webhook-kapso` and `recalcular-distancias` edge functions
+5. obtain real kapso credentials
+6. deploy cloudflare worker to production
+7. change `DRY_RUN = false` in worker
+
+## code style notes
+
+- all lowercase file names and variables (spanish language used throughout)
+- typescript for frontend, javascript for worker
+- supabase edge functions use deno (typescript)
+- uses radix-ui components via shadcn/ui
+- tailwind css for styling

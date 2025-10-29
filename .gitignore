@@ -1,42 +1,61 @@
 # dependencies
 node_modules/
 .pnpm-store/
+package-lock.json
 
 # environment variables
 .env
 .env.local
 .env*.local
+.env.production
 
 # next.js
 autobank-dtv/.next/
 autobank-dtv/out/
+autobank-dtv/.turbo/
 
 # production
 build/
 dist/
+out/
 
 # debug
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+pnpm-debug.log*
+
+# testing
+coverage/
+.nyc_output/
+*.test.js.snap
 
 # ide
 .vscode/
 .idea/
+*.code-workspace
 
 # os
 .DS_Store
 *.swp
 *.swo
+Thumbs.db
 
 # cloudflare worker
 .wrangler/
 wrangler.toml.local
 
-# archivos de prueba
+# supabase
+supabase/.temp/
+supabase/.branches/
+
+# archivos de prueba y demos
 *.xlsx
-!generar_archivo_prueba.py
+*.zip
+archivo_prueba_*.xlsx
+test-*.sh
 
 # secrets
 *.pem
 *.key
+*.secret
