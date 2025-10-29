@@ -1,6 +1,6 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
-import * as XLSX from 'https://cdn.sheetjs.com/xlsx-0.20.0/package/xlsx.mjs'
+import * as XLSX from 'https://esm.sh/xlsx@0.18.5'
 
 interface PuntoPickit {
   id: string
@@ -25,6 +25,12 @@ interface PersonaExcel {
   lon: number
   razonCreacion: string
   estadoCliente: string
+}
+
+interface PersonaDeduplicated extends PersonaExcel {
+  nrosCliente: string[]
+  nrosWO: string[]
+  cantidadDecos: number
 }
 
 function calcularDistanciaHaversine(lat1: number, lon1: number, lat2: number, lon2: number): number {
@@ -91,8 +97,34 @@ function leerPersonasDtv(workbook: any): PersonaExcel[] {
   return personas
 }
 
+function deduplicarPersonas(personas: PersonaExcel[]): PersonaDeduplicated[] {
+  const agrupadas = new Map<string, PersonaDeduplicated>()
+  
+  for (const persona of personas) {
+    const telefono = persona.telefonoPrincipal
+    
+    if (!agrupadas.has(telefono)) {
+      // primera vez que vemos este telefono
+      agrupadas.set(telefono, {
+        ...persona,
+        nrosCliente: [persona.nroCliente],
+        nrosWO: [persona.nroWO],
+        cantidadDecos: 1
+      })
+    } else {
+      // ya existe este telefono, agregamos los datos
+      const existente = agrupadas.get(telefono)!
+      existente.nrosCliente.push(persona.nroCliente)
+      existente.nrosWO.push(persona.nroWO)
+      existente.cantidadDecos++
+    }
+  }
+  
+  return Array.from(agrupadas.values())
+}
+
 function encontrarPuntoMasCercano(
-  persona: PersonaExcel,
+  persona: PersonaExcel | PersonaDeduplicated,
   puntos: PuntoPickit[]
 ): { punto: PuntoPickit | null; distancia: number } {
   let distanciaMinima = Infinity
@@ -162,11 +194,17 @@ serve(async (req) => {
     }
     
     const distanciaMax = campana.distancia_max
-    const personas = leerPersonasDtv(workbook)
+    
+    // leer todas las personas del excel
+    const personasRaw = leerPersonasDtv(workbook)
+    
+    // deduplicar por telefono_principal
+    const personasDeduplicated = deduplicarPersonas(personasRaw)
+    
     const personasParaInsertar = []
     let personasDentroRango = 0
     
-    for (const persona of personas) {
+    for (const persona of personasDeduplicated) {
       const { punto, distancia } = encontrarPuntoMasCercano(persona, puntosPickit)
       const dentroRango = distancia <= distanciaMax
       
@@ -177,6 +215,9 @@ serve(async (req) => {
         fila_archivo: persona.fila,
         nro_cliente: persona.nroCliente,
         nro_wo: persona.nroWO,
+        nros_cliente: persona.nrosCliente,
+        nros_wo: persona.nrosWO,
+        cantidad_decos: persona.cantidadDecos,
         apellido_nombre: persona.apellidoNombre,
         dni: persona.dni,
         telefono_principal: persona.telefonoPrincipal,
@@ -205,7 +246,7 @@ serve(async (req) => {
     const { error: updateError } = await supabase
       .from('campanas')
       .update({
-        total_personas: personas.length,
+        total_personas: personasDeduplicated.length,
         personas_dentro_rango: personasDentroRango
       })
       .eq('id', campana_id)
@@ -218,10 +259,11 @@ serve(async (req) => {
       JSON.stringify({
         success: true,
         campana_id,
-        total_personas: personas.length,
+        total_personas: personasDeduplicated.length,
+        total_filas_excel: personasRaw.length,
         personas_dentro_rango: personasDentroRango,
-        porcentaje: personas.length > 0 
-          ? Math.round(personasDentroRango / personas.length * 1000) / 10 
+        porcentaje: personasDeduplicated.length > 0 
+          ? Math.round(personasDentroRango / personasDeduplicated.length * 1000) / 10 
           : 0
       }),
       { 

@@ -46,12 +46,21 @@ async function consultarSupabase(env, campaID) {
 }
 
 async function simularEnvioKapso(persona, campana, env) {
+  // construir variables con soporte para deduplicación
+  const cantidadDecos = persona.cantidad_decos || 1
+  const nrosCliente = persona.nros_cliente || [persona.nro_cliente]
+  const textoDeco = cantidadDecos === 1 ? 'el decodificador' : 'los decodificadores'
+  const nrosClienteStr = nrosCliente.join(', ')
+  
   const mensaje = {
     phone_number: persona.telefono_principal,
     whatsapp_config_id: campana.kapso_whatsapp_config_id || env.KAPSO_WHATSAPP_CONFIG_ID,
     variables: {
       nombre_cliente: persona.apellido_nombre,
-      nro_cliente: persona.nro_cliente,
+      nro_cliente: persona.nro_cliente, // compatibilidad
+      nros_cliente: nrosClienteStr, // nuevo: lista completa
+      cantidad_decos: cantidadDecos, // nuevo: contador
+      texto_deco: textoDeco, // nuevo: singular/plural
       punto_pickit: persona.puntos_pickit?.nombre || 'N/A',
       direccion_punto: persona.puntos_pickit?.direccion || 'N/A',
       distancia: `${Math.round(persona.distancia_metros)} metros`
@@ -68,6 +77,7 @@ async function simularEnvioKapso(persona, campana, env) {
     persona_id: persona.id,
     telefono: persona.telefono_principal,
     nombre: persona.apellido_nombre,
+    cantidad_decos: cantidadDecos,
     mensaje,
     timestamp: new Date().toISOString(),
     simulated: true
@@ -81,12 +91,21 @@ async function enviarKapso(persona, campana, env) {
   
   const url = `https://app.kapso.ai/api/v1/flows/${campana.kapso_flow_id || env.KAPSO_FLOW_ID}/executions`
   
+  // construir variables con soporte para deduplicación
+  const cantidadDecos = persona.cantidad_decos || 1
+  const nrosCliente = persona.nros_cliente || [persona.nro_cliente]
+  const textoDeco = cantidadDecos === 1 ? 'el decodificador' : 'los decodificadores'
+  const nrosClienteStr = nrosCliente.join(', ')
+  
   const body = {
     phone_number: persona.telefono_principal,
     whatsapp_config_id: campana.kapso_whatsapp_config_id || env.KAPSO_WHATSAPP_CONFIG_ID,
     variables: {
       nombre_cliente: persona.apellido_nombre,
-      nro_cliente: persona.nro_cliente,
+      nro_cliente: persona.nro_cliente, // compatibilidad
+      nros_cliente: nrosClienteStr, // nuevo: lista completa
+      cantidad_decos: cantidadDecos, // nuevo: contador
+      texto_deco: textoDeco, // nuevo: singular/plural
       punto_pickit: persona.puntos_pickit?.nombre || 'N/A',
       direccion_punto: persona.puntos_pickit?.direccion || 'N/A',
       distancia: `${Math.round(persona.distancia_metros)} metros`
