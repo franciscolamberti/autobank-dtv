@@ -1,0 +1,16 @@
+name = "worker-distancias"
+main = "src/enviar-campana.js"
+compatibility_date = "2024-01-01"
+
+[triggers]
+# cron diario a las 12:00 utc (09:00 argentina sin dst)
+crons = ["0 12 * * *"]
+
+[build]
+command = ""
+
+[observability]
+enabled = true
+
+# límites para archivos grandes
+limits = { cpu_ms = 50000 }

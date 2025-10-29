@@ -1,0 +1,17 @@
+{
+  "name": "worker-distancias",
+  "version": "1.0.0",
+  "description": "cloudflare worker para calcular distancias entre personas y puntos pickit",
+  "main": "src/index.js",
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy"
+  },
+  "dependencies": {
+    "xlsx": "^0.18.5"
+  },
+  "devDependencies": {
+    "wrangler": "^3.0.0"
+  }
+}

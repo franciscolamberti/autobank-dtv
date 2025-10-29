@@ -1,0 +1,42 @@
+# dependencies
+node_modules/
+.pnpm-store/
+
+# environment variables
+.env
+.env.local
+.env*.local
+
+# next.js
+autobank-dtv/.next/
+autobank-dtv/out/
+
+# production
+build/
+dist/
+
+# debug
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# ide
+.vscode/
+.idea/
+
+# os
+.DS_Store
+*.swp
+*.swo
+
+# cloudflare worker
+.wrangler/
+wrangler.toml.local
+
+# archivos de prueba
+*.xlsx
+!generar_archivo_prueba.py
+
+# secrets
+*.pem
+*.key
