@@ -1,70 +1,60 @@
+"use client"
+
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
-import { Input } from "@/components/ui/input"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Activity, CheckCircle2, MapPin, MoreVertical, Plus, Search, Users } from "lucide-react"
+import { Activity, Clock, Plus } from "lucide-react"
 import Link from "next/link"
+import { useRouter } from "next/navigation"
+import { useEffect, useState } from "react"
 import { supabase, type Campana } from "@/lib/supabase"
 
-async function getDashboardData() {
-  // obtener campañas
-  const { data: campaigns, error: campaignsError } = await supabase
-    .from('campanas')
-    .select('*')
-    .order('created_at', { ascending: false })
-    .limit(10)
+export default function DashboardPage() {
+  const router = useRouter()
+  const [campaigns, setCampaigns] = useState<Campana[]>([])
+  const [stats, setStats] = useState({ activeCampaigns: 0, totalPending: 0 })
+  const [loading, setLoading] = useState(true)
 
-  if (campaignsError) {
-    console.error('error cargando campañas:', campaignsError)
-    return { campaigns: [], stats: { activeCampaigns: 0, contactedToday: 0, avgConfirmationRate: 0, pendingRecovery: 0 } }
-  }
+  useEffect(() => {
+    loadDashboardData()
+  }, [])
 
-  // calcular stats
-  const activeCampaigns = campaigns?.filter(c => c.estado === 'activa').length || 0
-  
-  // personas contactadas hoy
-  const today = new Date()
-  today.setHours(0, 0, 0, 0)
-  const { count: contactedToday } = await supabase
-    .from('personas_contactar')
-    .select('*', { count: 'exact', head: true })
-    .gte('fecha_envio_whatsapp', today.toISOString())
+  const loadDashboardData = async () => {
+    try {
+      // obtener campañas
+      const { data: campaigns, error: campaignsError } = await supabase
+        .from('campanas')
+        .select('*')
+        .order('created_at', { ascending: false })
 
-  // tasa de confirmación promedio
-  const { data: allPersonas } = await supabase
-    .from('personas_contactar')
-    .select('estado_contacto')
-  
-  const totalEnviados = allPersonas?.filter(p => 
-    ['enviado_whatsapp', 'respondio', 'confirmado', 'rechazado'].includes(p.estado_contacto)
-  ).length || 0
-  
-  const totalConfirmados = allPersonas?.filter(p => p.estado_contacto === 'confirmado').length || 0
-  const avgConfirmationRate = totalEnviados > 0 ? (totalConfirmados / totalEnviados * 100) : 0
+      if (campaignsError) {
+        console.error('error cargando campañas:', campaignsError)
+        return
+      }
 
-  // pendientes de recupero
-  const { count: pendingRecovery } = await supabase
-    .from('personas_contactar')
-    .select('*', { count: 'exact', head: true })
-    .eq('dentro_rango', true)
-    .in('estado_contacto', ['pendiente', 'encolado'])
+      setCampaigns(campaigns || [])
 
-  return {
-    campaigns: campaigns || [],
-    stats: {
-      activeCampaigns,
-      contactedToday: contactedToday || 0,
-      avgConfirmationRate: Math.round(avgConfirmationRate * 10) / 10,
-      pendingRecovery: pendingRecovery || 0
+      // calcular stats simples
+      const activeCampaigns = campaigns?.filter(c => c.estado === 'activa').length || 0
+      
+      // total de personas pendientes (dentro de rango y pendientes/encoladas)
+      const { count: totalPending } = await supabase
+        .from('personas_contactar')
+        .select('*', { count: 'exact', head: true })
+        .eq('dentro_rango', true)
+        .in('estado_contacto', ['pendiente', 'encolado'])
+
+      setStats({
+        activeCampaigns,
+        totalPending: totalPending || 0
+      })
+    } catch (error) {
+      console.error('Error loading dashboard:', error)
+    } finally {
+      setLoading(false)
     }
   }
-}
-
-export default async function DashboardPage() {
-  const { campaigns, stats } = await getDashboardData()
 
   const getStatusBadge = (status: string) => {
     const variants: Record<string, { label: string; className: string }> = {
@@ -74,6 +64,17 @@ export default async function DashboardPage() {
     }
     const variant = variants[status] || variants.activa
     return <Badge className={variant.className}>{variant.label}</Badge>
+  }
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-center">
+          <Activity className="h-8 w-8 animate-spin text-blue-600 mx-auto mb-4" />
+          <p className="text-muted-foreground">Cargando dashboard...</p>
+        </div>
+      </div>
+    )
   }
 
   return (
@@ -102,8 +103,8 @@ export default async function DashboardPage() {
       </header>
 
       <main className="container mx-auto px-6 py-8">
-        {/* Stats Cards */}
-        <div className="mb-8 grid gap-6 md:grid-cols-2 lg:grid-cols-4">
+        {/* Stats Cards - Simplificado */}
+        <div className="mb-8 grid gap-6 md:grid-cols-2">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between pb-2">
               <CardTitle className="text-sm font-medium text-muted-foreground">Campañas Activas</CardTitle>
@@ -116,58 +117,20 @@ export default async function DashboardPage() {
 
           <Card>
             <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">Contactados Hoy</CardTitle>
-              <Users className="h-4 w-4 text-blue-600" />
+              <CardTitle className="text-sm font-medium text-muted-foreground">Total Personas Pendientes</CardTitle>
+              <Clock className="h-4 w-4 text-orange-600" />
             </CardHeader>
             <CardContent>
-              <div className="text-3xl font-bold text-foreground">{stats.contactedToday}</div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">Tasa de Confirmación</CardTitle>
-              <CheckCircle2 className="h-4 w-4 text-green-600" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-3xl font-bold text-foreground">{stats.avgConfirmationRate}%</div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">Pendientes de Recupero</CardTitle>
-              <MapPin className="h-4 w-4 text-orange-600" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-3xl font-bold text-foreground">{stats.pendingRecovery}</div>
+              <div className="text-3xl font-bold text-foreground">{stats.totalPending}</div>
+              <p className="text-xs text-muted-foreground mt-1">Dentro de rango y listas para contactar</p>
             </CardContent>
           </Card>
         </div>
 
-        {/* Campaigns Table */}
+        {/* Campaigns Table - Simplificado */}
         <Card>
           <CardHeader>
-            <div className="flex items-center justify-between">
-              <CardTitle className="text-xl font-semibold">Campañas Recientes</CardTitle>
-              <div className="flex gap-3">
-                <div className="relative">
-                  <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                  <Input placeholder="Buscar campañas..." className="w-64 pl-9" />
-                </div>
-                <Select defaultValue="all">
-                  <SelectTrigger className="w-40">
-                    <SelectValue placeholder="Estado" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">Todos</SelectItem>
-                    <SelectItem value="active">Activas</SelectItem>
-                    <SelectItem value="paused">Pausadas</SelectItem>
-                    <SelectItem value="completed">Finalizadas</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
+            <CardTitle className="text-xl font-semibold">Campañas</CardTitle>
           </CardHeader>
           <CardContent>
             {campaigns.length > 0 ? (
@@ -176,43 +139,23 @@ export default async function DashboardPage() {
                   <TableRow>
                     <TableHead>Nombre</TableHead>
                     <TableHead>Fecha Creación</TableHead>
-                    <TableHead className="text-right">Total Clientes</TableHead>
-                    <TableHead className="text-right">Dentro Rango</TableHead>
+                    <TableHead className="text-right">Total Personas</TableHead>
                     <TableHead>Estado</TableHead>
-                    <TableHead className="w-12"></TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {campaigns.map((campaign) => (
-                    <TableRow key={campaign.id} className="cursor-pointer hover:bg-muted/50">
+                    <TableRow 
+                      key={campaign.id} 
+                      className="cursor-pointer hover:bg-muted/50"
+                      onClick={() => router.push(`/campanas/${campaign.id}`)}
+                    >
                       <TableCell className="font-medium">{campaign.nombre}</TableCell>
                       <TableCell className="text-muted-foreground">
                         {new Date(campaign.created_at).toLocaleDateString("es-AR")}
                       </TableCell>
                       <TableCell className="text-right">{campaign.total_personas}</TableCell>
-                      <TableCell className="text-right">
-                        <span className="text-green-600 font-medium">{campaign.personas_dentro_rango}</span>
-                        <span className="text-muted-foreground text-sm ml-1">
-                          ({campaign.total_personas > 0 ? Math.round((campaign.personas_dentro_rango / campaign.total_personas) * 100) : 0}%)
-                        </span>
-                      </TableCell>
                       <TableCell>{getStatusBadge(campaign.estado)}</TableCell>
-                      <TableCell>
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="icon">
-                              <MoreVertical className="h-4 w-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuItem asChild>
-                              <Link href={`/campanas/${campaign.id}`}>Ver detalle</Link>
-                            </DropdownMenuItem>
-                            <DropdownMenuItem>Editar</DropdownMenuItem>
-                            <DropdownMenuItem className="text-destructive">Eliminar</DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </TableCell>
                     </TableRow>
                   ))}
                 </TableBody>

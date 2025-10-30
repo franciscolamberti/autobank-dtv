@@ -27,6 +27,8 @@ export default function NewCampaignPage() {
   // Form state
   const [campaignName, setCampaignName] = useState("")
   const [maxDistance, setMaxDistance] = useState([2000])
+  const [horarioInicio, setHorarioInicio] = useState("12:00")
+  const [horarioFin, setHorarioFin] = useState("15:00")
   const [flowId, setFlowId] = useState("")
   const [whatsappConfigId, setWhatsappConfigId] = useState("")
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
@@ -60,6 +62,8 @@ export default function NewCampaignPage() {
         .insert({
           nombre: campaignName,
           distancia_max: maxDistance[0],
+          horario_envio_inicio: horarioInicio,
+          horario_envio_fin: horarioFin,
           archivo_url: '', // se actualizará después de subir archivo
           kapso_flow_id: flowId || null,
           kapso_whatsapp_config_id: whatsappConfigId || null,
@@ -236,12 +240,30 @@ export default function NewCampaignPage() {
                   </div>
                 </div>
 
-                <Alert>
-                  <Clock className="h-4 w-4" />
-                  <AlertDescription>
-                    <strong>Horario de envío automático:</strong> 12:00 - 15:00 (Argentina)
-                  </AlertDescription>
-                </Alert>
+                <div className="space-y-4">
+                  <Label>Horario de Contacto</Label>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="horario-inicio" className="text-sm text-muted-foreground">Hora Inicio</Label>
+                      <Input
+                        id="horario-inicio"
+                        type="time"
+                        value={horarioInicio}
+                        onChange={(e) => setHorarioInicio(e.target.value)}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="horario-fin" className="text-sm text-muted-foreground">Hora Fin</Label>
+                      <Input
+                        id="horario-fin"
+                        type="time"
+                        value={horarioFin}
+                        onChange={(e) => setHorarioFin(e.target.value)}
+                      />
+                    </div>
+                  </div>
+                  <p className="text-sm text-muted-foreground">Los mensajes se enviarán automáticamente en este rango horario (zona horaria: Argentina)</p>
+                </div>
 
                 <Collapsible>
                   <CollapsibleTrigger asChild>
@@ -382,7 +404,7 @@ export default function NewCampaignPage() {
                   </div>
                   <div className="flex justify-between py-2 border-b border-border">
                     <span className="text-muted-foreground">Horario de envío:</span>
-                    <span className="font-medium text-foreground">12:00 - 15:00 (Argentina)</span>
+                    <span className="font-medium text-foreground">{horarioInicio} - {horarioFin} (Argentina)</span>
                   </div>
                   {flowId && (
                     <div className="flex justify-between py-2 border-b border-border">

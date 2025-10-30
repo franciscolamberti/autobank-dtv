@@ -2,6 +2,12 @@ import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import * as XLSX from 'https://esm.sh/xlsx@0.18.5'
 
+const corsHeaders: HeadersInit = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Methods': 'POST, OPTIONS'
+}
+
 interface PuntoPickit {
   id: string
   nombre: string
@@ -84,7 +90,7 @@ function leerPersonasDtv(workbook: any): PersonaExcel[] {
           direccionCompleta: `${row[30] || ''} ${row[31] || ''}`.trim(),
           cp: row[35] || '',
           localidad: row[36] || '',
-          provincia: row[37] || '',
+          provincia: row[34] || '',
           lat: latNum,
           lon: lonNum,
           razonCreacion: row[3] || '',
@@ -149,6 +155,11 @@ function encontrarPuntoMasCercano(
 
 serve(async (req) => {
   try {
+    // manejar preflight cors
+    if (req.method === 'OPTIONS') {
+      return new Response('ok', { headers: corsHeaders })
+    }
+
     const supabase = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
@@ -159,7 +170,7 @@ serve(async (req) => {
     if (!campana_id || !bucket || !path) {
       return new Response(
         JSON.stringify({ error: 'faltan parámetros: campana_id, bucket, path' }),
-        { status: 400, headers: { 'Content-Type': 'application/json' } }
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
     
@@ -268,7 +279,7 @@ serve(async (req) => {
       }),
       { 
         status: 200,
-        headers: { 'Content-Type': 'application/json' }
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       }
     )
     
@@ -280,7 +291,7 @@ serve(async (req) => {
       }),
       { 
         status: 500,
-        headers: { 'Content-Type': 'application/json' }
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       }
     )
   }
