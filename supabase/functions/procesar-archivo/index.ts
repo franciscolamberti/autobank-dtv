@@ -4,8 +4,9 @@ import * as XLSX from 'https://esm.sh/xlsx@0.18.5'
 
 const corsHeaders: HeadersInit = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-  'Access-Control-Allow-Methods': 'POST, OPTIONS'
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-requested-with',
+  'Access-Control-Allow-Methods': 'POST, GET, OPTIONS',
+  'Access-Control-Max-Age': '86400'
 }
 
 interface PuntoPickit {
@@ -479,12 +480,15 @@ async function generarExportFueraRango(
 }
 
 serve(async (req) => {
-  try {
-    // Manejar preflight CORS
-    if (req.method === 'OPTIONS') {
-      return new Response('ok', { headers: corsHeaders })
-    }
+  // Manejar preflight CORS PRIMERO antes del try/catch
+  if (req.method === 'OPTIONS') {
+    return new Response('ok', { 
+      status: 200,
+      headers: corsHeaders 
+    })
+  }
 
+  try {
     const supabase = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
