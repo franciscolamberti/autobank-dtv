@@ -94,6 +94,13 @@ Deno.serve(async (req) => {
       );
     }
 
+    // Derivar campana_id desde el path si no vino en el payload
+    let campanaId = campana_id as string | null | undefined;
+    if (!campanaId && typeof path === 'string') {
+      const first = path.split('/')[0];
+      if (first && /^[0-9a-fA-F-]{36}$/.test(first)) campanaId = first;
+    }
+
     // @ts-ignore - remote import in Deno runtime
     const { createClient } = await import('https://esm.sh/@supabase/supabase-js@2');
     const supabaseUrl = Deno.env.get('SUPABASE_URL') || '';
@@ -239,12 +246,12 @@ Deno.serve(async (req) => {
       if (!exists) deduplicadas.push(v);
     }
 
-    if (!campana_id) {
+    if (!campanaId) {
       return new Response(
         JSON.stringify({
           ok: true,
           stage: 'db-insert-skip',
-          reason: 'campana_id requerido para insertar en DB',
+          reason: 'campana_id faltante (no derivable de path)',
           totalRowsExcel: rows.length,
           personasRaw: personas.length,
           personasDeduplicadas: deduplicadas.length
@@ -259,7 +266,7 @@ Deno.serve(async (req) => {
       const { data: campana } = await supabase
         .from('campanas')
         .select('distancia_max, kapso_phone_number_id')
-        .eq('id', campana_id)
+        .eq('id', campanaId)
         .single();
       if (campana && typeof campana.distancia_max === 'number') distanciaMax = campana.distancia_max;
       if (campana && typeof campana.kapso_phone_number_id === 'string') kapsoPhoneNumberId = campana.kapso_phone_number_id;
@@ -320,7 +327,7 @@ Deno.serve(async (req) => {
         }
 
         const registro = {
-          campana_id,
+          campana_id: campanaId,
           fila_archivo: p.fila,
           nro_cliente: p.nroCliente || null,
           nro_wo: p.nroWO || null,
@@ -396,11 +403,11 @@ Deno.serve(async (req) => {
       XLSX.utils.book_append_sheet(wb, ws, 'Fuera de Rango');
       const excelBuffer = XLSX.write(wb, { type: 'array', bookType: 'xlsx' });
       const excelUint8 = new Uint8Array(excelBuffer);
-      const name = `export-fuera-rango-${campana_id}-${Date.now()}.xlsx`;
+      const name = `export-fuera-rango-${campanaId}-${Date.now()}.xlsx`;
       const { error: uploadError } = await supabase
         .storage
         .from('archivos-dtv')
-        .upload(`${campana_id}/${name}`, excelUint8, {
+        .upload(`${campanaId}/${name}`, excelUint8, {
           contentType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
         });
       if (!uploadError) exportFileName = name;
@@ -411,7 +418,7 @@ Deno.serve(async (req) => {
       const { error: updateError } = await supabase
         .from('campanas')
         .update({ total_personas: deduplicadas.length, personas_dentro_rango: dentro })
-        .eq('id', campana_id);
+        .eq('id', campanaId);
       if (updateError) {
         return new Response(
           JSON.stringify({ error: `error actualizando campaña: ${updateError.message}` }),
