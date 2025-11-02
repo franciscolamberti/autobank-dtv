@@ -101,12 +101,13 @@ Deno.serve(async (req) => {
 
     console.log(`Found ${personas.length} people to recalculate`)
 
-    // Recalculate dentro_rango for each persona
+    // Recalculate dentro_rango and fuera_de_rango for each persona
     let updatedCount = 0
     let dentroRangoCount = 0
 
     for (const persona of personas) {
       const nuevoDentroRango = persona.distancia_metros <= distancia_max
+      const nuevoFueraRango = persona.distancia_metros > distancia_max
 
       if (nuevoDentroRango) {
         dentroRangoCount++
@@ -114,7 +115,10 @@ Deno.serve(async (req) => {
 
       const { error: updateError } = await supabaseClient
         .from('personas_contactar')
-        .update({ dentro_rango: nuevoDentroRango })
+        .update({ 
+          dentro_rango: nuevoDentroRango,
+          fuera_de_rango: nuevoFueraRango
+        })
         .eq('id', persona.id)
 
       if (updateError) {

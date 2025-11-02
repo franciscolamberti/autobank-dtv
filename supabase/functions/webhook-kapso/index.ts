@@ -1,5 +1,6 @@
 // Supabase Edge Function: webhook-kapso
 // Receives webhook responses from Kapso API when users respond to WhatsApp messages
+// Según PRD: verificar firma, parsear variables estructuradas, actualizar persona y contadores
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts"
 import { createClient } from 'jsr:@supabase/supabase-js@2'
@@ -10,10 +11,17 @@ const corsHeaders = {
 }
 
 interface KapsoWebhookPayload {
-  execution_id: string
-  phone_number: string
-  status: 'completed' | 'failed' | 'in_progress'
-  variables?: Record<string, any>
+  tracking_id?: string
+  workflow_id?: string
+  phone_number?: string
+  status?: 'completed' | 'failed' | 'in_progress'
+  variables?: {
+    confirmado?: boolean
+    fecha_compromiso?: string // formato YYYY-MM-DD
+    motivo_negativo?: string
+    solicita_retiro_domicilio?: boolean
+    [key: string]: any
+  }
   context?: {
     source?: string
     campana_id?: string
@@ -28,6 +36,122 @@ interface KapsoWebhookPayload {
   metadata?: Record<string, any>
 }
 
+/**
+ * Verifica firma HMAC SHA-256 del webhook según PRD
+ * Header: X-Kapso-Signature
+ */
+async function verificarFirma(
+  body: string,
+  signature: string | null,
+  secret: string | null
+): Promise<boolean> {
+  if (!signature || !secret) {
+    console.warn('Firma o secreto no proporcionados, rechazando')
+    return false
+  }
+
+  try {
+    // Calcular HMAC SHA-256 del body
+    const encoder = new TextEncoder()
+    const keyData = encoder.encode(secret)
+    const messageData = encoder.encode(body)
+    
+    const cryptoKey = await crypto.subtle.importKey(
+      'raw',
+      keyData,
+      { name: 'HMAC', hash: 'SHA-256' },
+      false,
+      ['sign']
+    )
+    
+    const signatureBuffer = await crypto.subtle.sign('HMAC', cryptoKey, messageData)
+    const calculatedSignature = Array.from(new Uint8Array(signatureBuffer))
+      .map(b => b.toString(16).padStart(2, '0'))
+      .join('')
+    
+    // Comparar firmas (comparación segura)
+    const providedSignature = signature.replace(/^sha256=/, '')
+    
+    // Comparación constante en tiempo para evitar timing attacks
+    if (calculatedSignature.length !== providedSignature.length) {
+      return false
+    }
+    
+    let matches = true
+    for (let i = 0; i < calculatedSignature.length; i++) {
+      if (calculatedSignature[i] !== providedSignature[i]) {
+        matches = false
+      }
+    }
+    
+    return matches
+  } catch (error) {
+    console.error('Error verificando firma:', error)
+    return false
+  }
+}
+
+/**
+ * Parsea variables estructuradas del workflow según PRD
+ * Si no hay variables, usa heurística de keywords como fallback
+ */
+function parsearRespuesta(
+  payload: KapsoWebhookPayload,
+  lastUserMessage: string | null
+): {
+  estado: string
+  fechaCompromiso: string | null
+  motivoNegativo: string | null
+  solicitaRetiro: boolean
+} {
+  const variables = payload.variables || {}
+  
+  // Si hay variables estructuradas, usarlas según PRD
+  if (variables.confirmado !== undefined || variables.fecha_compromiso || variables.motivo_negativo) {
+    const estado = variables.confirmado === true ? 'confirmado' : 
+                   variables.confirmado === false ? 'rechazado' : 
+                   'respondio'
+    
+    return {
+      estado,
+      fechaCompromiso: variables.fecha_compromiso || null,
+      motivoNegativo: variables.motivo_negativo || null,
+      solicitaRetiro: variables.solicita_retiro_domicilio === true
+    }
+  }
+  
+  // Fallback: heurística de keywords solo si no hay variables estructuradas
+  if (lastUserMessage) {
+    const mensajeLower = lastUserMessage.toLowerCase()
+    
+    const confirmacionKeywords = ['si', 'sí', 'confirmo', 'acepto', 'ok', 'dale', 'genial', 'perfecto', 'voy', 'confirmado']
+    const rechazoKeywords = ['no', 'rechaz', 'cancel', 'imposible', 'no puedo', 'no voy', 'no tengo', 'robado', 'perdido']
+    
+    if (confirmacionKeywords.some(keyword => mensajeLower.includes(keyword))) {
+      return {
+        estado: 'confirmado',
+        fechaCompromiso: null,
+        motivoNegativo: null,
+        solicitaRetiro: false
+      }
+    } else if (rechazoKeywords.some(keyword => mensajeLower.includes(keyword))) {
+      return {
+        estado: 'rechazado',
+        fechaCompromiso: null,
+        motivoNegativo: lastUserMessage, // Usar mensaje completo como motivo
+        solicitaRetiro: false
+      }
+    }
+  }
+  
+  return {
+    estado: 'respondio',
+    fechaCompromiso: null,
+    motivoNegativo: null,
+    solicitaRetiro: false
+  }
+}
+
 Deno.serve(async (req) => {
   // Handle CORS preflight
   if (req.method === 'OPTIONS') {
@@ -35,20 +159,26 @@ Deno.serve(async (req) => {
   }
 
   try {
-    // Initialize Supabase client
-    const supabaseClient = createClient(
-      Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
-      {
-        auth: {
-          autoRefreshToken: false,
-          persistSession: false,
-        },
-      }
-    )
-
-    // Parse request body
-    const payload: KapsoWebhookPayload = await req.json()
+    // Leer body como texto para verificar firma
+    const bodyText = await req.text()
+    const signature = req.headers.get('X-Kapso-Signature')
+    const webhookSecret = Deno.env.get('KAPSO_WEBHOOK_SECRET')
+    
+    // Verificar firma según PRD
+    const firmaValida = await verificarFirma(bodyText, signature, webhookSecret)
+    if (!firmaValida) {
+      console.error('Firma inválida, rechazando webhook')
+      return new Response(
+        JSON.stringify({ error: 'Invalid signature' }),
+        { 
+          status: 401,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        }
+      )
+    }
+    
+    // Parsear payload
+    const payload: KapsoWebhookPayload = JSON.parse(bodyText)
     console.log('Received Kapso webhook:', JSON.stringify(payload, null, 2))
 
     // Validate required fields
@@ -65,38 +195,56 @@ Deno.serve(async (req) => {
 
     const personaId = payload.context.persona_id
     const campanaId = payload.context.campana_id
+    const source = payload.context.source
+
+    // Determinar si es workflow de recordatorio
+    const esRecordatorio = source === 'sistema_pickit_recordatorio' || 
+                          payload.workflow_id?.includes('recordatorio')
 
     // Extract last user message
     const lastUserMessage = payload.last_user_message || 
       payload.messages?.filter(m => m.role === 'user').pop()?.content ||
       null
 
-    // Determine new status based on response
-    let nuevoEstado = 'respondio'
-    
-    if (lastUserMessage) {
-      const mensajeLower = lastUserMessage.toLowerCase()
-      
-      // Keywords for confirmation
-      const confirmacionKeywords = ['si', 'sí', 'confirmo', 'acepto', 'ok', 'dale', 'genial', 'perfecto', 'voy']
-      // Keywords for rejection
-      const rechazoKeywords = ['no', 'rechaz', 'cancel', 'imposible', 'no puedo', 'no voy']
-      
-      if (confirmacionKeywords.some(keyword => mensajeLower.includes(keyword))) {
-        nuevoEstado = 'confirmado'
-      } else if (rechazoKeywords.some(keyword => mensajeLower.includes(keyword))) {
-        nuevoEstado = 'rechazado'
+    // Parsear respuesta (variables estructuradas o heurística)
+    const respuesta = parsearRespuesta(payload, lastUserMessage)
+
+    // Inicializar Supabase client
+    const supabaseClient = createClient(
+      Deno.env.get('SUPABASE_URL') ?? '',
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
+      {
+        auth: {
+          autoRefreshToken: false,
+          persistSession: false,
+        },
       }
+    )
+
+    // Preparar actualización de persona
+    const updateData: any = {
+      estado_contacto: respuesta.estado,
+      respuesta_texto: lastUserMessage,
+      fecha_respuesta: new Date().toISOString(),
+      motivo_negativo: respuesta.motivoNegativo,
+      solicita_retiro_domicilio: respuesta.solicitaRetiro
+    }
+
+    // Agregar fecha_compromiso si está presente
+    if (respuesta.fechaCompromiso) {
+      updateData.fecha_compromiso = respuesta.fechaCompromiso
+    }
+
+    // Si es recordatorio, marcar recordatorio_enviado
+    if (esRecordatorio) {
+      updateData.recordatorio_enviado = true
+      updateData.fecha_envio_recordatorio = new Date().toISOString()
     }
 
     // Update persona record
     const { error: updateError } = await supabaseClient
       .from('personas_contactar')
-      .update({
-        estado_contacto: nuevoEstado,
-        respuesta_texto: lastUserMessage,
-        fecha_respuesta: new Date().toISOString(),
-      })
+      .update(updateData)
       .eq('id', personaId)
 
     if (updateError) {
@@ -104,7 +252,7 @@ Deno.serve(async (req) => {
       throw updateError
     }
 
-    console.log(`Updated persona ${personaId} to status: ${nuevoEstado}`)
+    console.log(`Updated persona ${personaId} to status: ${respuesta.estado}`)
 
     // Update campaign counters if we have campana_id
     if (campanaId) {
@@ -141,7 +289,8 @@ Deno.serve(async (req) => {
       JSON.stringify({ 
         success: true, 
         persona_id: personaId,
-        nuevo_estado: nuevoEstado,
+        nuevo_estado: respuesta.estado,
+        fecha_compromiso: respuesta.fechaCompromiso,
         message: 'Webhook processed successfully'
       }),
       { 
@@ -169,19 +318,27 @@ Deno.serve(async (req) => {
 
   1. Run `supabase start`
   2. Deploy this function: `supabase functions deploy webhook-kapso`
-  3. Make an HTTP request:
+  3. Set KAPSO_WEBHOOK_SECRET env var
+  4. Make an HTTP request:
 
   curl -i --location --request POST 'http://127.0.0.1:54321/functions/v1/webhook-kapso' \
     --header 'Authorization: Bearer YOUR_ANON_KEY' \
     --header 'Content-Type: application/json' \
+    --header 'X-Kapso-Signature: sha256=...' \
     --data '{
-      "execution_id": "exec-123",
+      "tracking_id": "uuid-tracking",
+      "workflow_id": "uuid-workflow",
       "phone_number": "+5491156571617",
-      "status": "completed",
       "context": {
         "source": "sistema_pickit",
         "campana_id": "uuid-campana",
         "persona_id": "uuid-persona"
+      },
+      "variables": {
+        "confirmado": true,
+        "fecha_compromiso": "2025-11-05",
+        "motivo_negativo": null,
+        "solicita_retiro_domicilio": false
       },
       "last_user_message": "Si, confirmo que voy"
     }'

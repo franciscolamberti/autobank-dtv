@@ -24,13 +24,25 @@ export default function NewCampaignPage() {
   const [isProcessing, setIsProcessing] = useState(false)
   const [processingStatus, setProcessingStatus] = useState("")
 
-  // Form state
+  // Form state según PRD
   const [campaignName, setCampaignName] = useState("")
   const [maxDistance, setMaxDistance] = useState([2000])
-  const [horarioInicio, setHorarioInicio] = useState("12:00")
-  const [horarioFin, setHorarioFin] = useState("15:00")
-  const [flowId, setFlowId] = useState("")
-  const [whatsappConfigId, setWhatsappConfigId] = useState("")
+  const [fechaFinContactacion, setFechaFinContactacion] = useState("")
+  const [horarioCorteDiario, setHorarioCorteDiario] = useState("20:00")
+  // Ventanas Lunes-Viernes
+  const [ventana1Inicio, setVentana1Inicio] = useState("12:00")
+  const [ventana1Fin, setVentana1Fin] = useState("15:00")
+  const [ventana2Inicio, setVentana2Inicio] = useState("18:00")
+  const [ventana2Fin, setVentana2Fin] = useState("20:30")
+  // Ventana Sábado
+  const [sabadoInicio, setSabadoInicio] = useState("10:00")
+  const [sabadoFin, setSabadoFin] = useState("13:00")
+  const [contactarDomingo, setContactarDomingo] = useState(false)
+  const [timezone, setTimezone] = useState("America/Argentina/Buenos_Aires")
+  // Kapso config
+  const [kapsoWorkflowId, setKapsoWorkflowId] = useState("")
+  const [kapsoWorkflowIdRecordatorio, setKapsoWorkflowIdRecordatorio] = useState("")
+  const [kapsoPhoneNumberId, setKapsoPhoneNumberId] = useState("")
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -56,17 +68,26 @@ export default function NewCampaignPage() {
     setProcessingStatus("Creando campaña...")
 
     try {
-      // 1. crear registro de campaña
+      // 1. crear registro de campaña con todos los campos PRD
       const { data: campana, error: campanaError } = await supabase
         .from('campanas')
         .insert({
           nombre: campaignName,
           distancia_max: maxDistance[0],
-          horario_envio_inicio: horarioInicio,
-          horario_envio_fin: horarioFin,
+          fecha_fin_contactacion: fechaFinContactacion || null,
+          horario_corte_diario: horarioCorteDiario || '20:00:00',
+          horario_ventana_1_inicio: ventana1Inicio || '12:00:00',
+          horario_ventana_1_fin: ventana1Fin || '15:00:00',
+          horario_ventana_2_inicio: ventana2Inicio || '18:00:00',
+          horario_ventana_2_fin: ventana2Fin || '20:30:00',
+          horario_sabado_inicio: sabadoInicio || '10:00:00',
+          horario_sabado_fin: sabadoFin || '13:00:00',
+          contactar_domingo: contactarDomingo,
+          timezone: timezone || 'America/Argentina/Buenos_Aires',
+          kapso_workflow_id: kapsoWorkflowId || null,
+          kapso_workflow_id_recordatorio: kapsoWorkflowIdRecordatorio || null,
+          kapso_phone_number_id: kapsoPhoneNumberId || null,
           archivo_url: '', // se actualizará después de subir archivo
-          kapso_flow_id: flowId || null,
-          kapso_whatsapp_config_id: whatsappConfigId || null,
           estado: 'activa'
         })
         .select()
@@ -240,55 +261,125 @@ export default function NewCampaignPage() {
                   </div>
                 </div>
 
+                <div className="space-y-2">
+                  <Label htmlFor="fecha-fin">Fecha Fin de Contactación *</Label>
+                  <Input
+                    id="fecha-fin"
+                    type="date"
+                    value={fechaFinContactacion}
+                    onChange={(e) => setFechaFinContactacion(e.target.value)}
+                    required
+                  />
+                  <p className="text-sm text-muted-foreground">Plazo máximo para contactar personas</p>
+                </div>
+
                 <div className="space-y-4">
-                  <Label>Horario de Contacto</Label>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="horario-inicio" className="text-sm text-muted-foreground">Hora Inicio</Label>
-                      <Input
-                        id="horario-inicio"
-                        type="time"
-                        value={horarioInicio}
-                        onChange={(e) => setHorarioInicio(e.target.value)}
-                      />
+                  <Label>Ventanas Horarias - Lunes a Viernes</Label>
+                  <div className="space-y-3">
+                    <div>
+                      <Label className="text-sm text-muted-foreground mb-2 block">Ventana 1</Label>
+                      <div className="grid grid-cols-2 gap-4">
+                        <Input
+                          type="time"
+                          value={ventana1Inicio}
+                          onChange={(e) => setVentana1Inicio(e.target.value)}
+                        />
+                        <Input
+                          type="time"
+                          value={ventana1Fin}
+                          onChange={(e) => setVentana1Fin(e.target.value)}
+                        />
+                      </div>
                     </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="horario-fin" className="text-sm text-muted-foreground">Hora Fin</Label>
-                      <Input
-                        id="horario-fin"
-                        type="time"
-                        value={horarioFin}
-                        onChange={(e) => setHorarioFin(e.target.value)}
-                      />
+                    <div>
+                      <Label className="text-sm text-muted-foreground mb-2 block">Ventana 2</Label>
+                      <div className="grid grid-cols-2 gap-4">
+                        <Input
+                          type="time"
+                          value={ventana2Inicio}
+                          onChange={(e) => setVentana2Inicio(e.target.value)}
+                        />
+                        <Input
+                          type="time"
+                          value={ventana2Fin}
+                          onChange={(e) => setVentana2Fin(e.target.value)}
+                        />
+                      </div>
                     </div>
                   </div>
-                  <p className="text-sm text-muted-foreground">Los mensajes se enviarán automáticamente en este rango horario (zona horaria: Argentina)</p>
+                </div>
+
+                <div className="space-y-4">
+                  <Label>Ventana Horaria - Sábado</Label>
+                  <div className="grid grid-cols-2 gap-4">
+                    <Input
+                      type="time"
+                      value={sabadoInicio}
+                      onChange={(e) => setSabadoInicio(e.target.value)}
+                    />
+                    <Input
+                      type="time"
+                      value={sabadoFin}
+                      onChange={(e) => setSabadoFin(e.target.value)}
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="horario-corte">Horario de Corte Diario</Label>
+                  <Input
+                    id="horario-corte"
+                    type="time"
+                    value={horarioCorteDiario}
+                    onChange={(e) => setHorarioCorteDiario(e.target.value)}
+                  />
+                  <p className="text-sm text-muted-foreground">Hora de generación del archivo diario Pickit (default: 20:00)</p>
+                </div>
+
+                <div className="flex items-center space-x-2">
+                  <input
+                    type="checkbox"
+                    id="contactar-domingo"
+                    checked={contactarDomingo}
+                    onChange={(e) => setContactarDomingo(e.target.checked)}
+                    className="h-4 w-4"
+                  />
+                  <Label htmlFor="contactar-domingo">Contactar también los domingos</Label>
                 </div>
 
                 <Collapsible>
                   <CollapsibleTrigger asChild>
                     <Button variant="ghost" className="w-full justify-between">
-                      <span>Configuración Avanzada (Opcional)</span>
+                      <span>Configuración Kapso (Opcional)</span>
                       <ChevronDown className="h-4 w-4" />
                     </Button>
                   </CollapsibleTrigger>
                   <CollapsibleContent className="space-y-4 pt-4">
                     <div className="space-y-2">
-                      <Label htmlFor="flow-id">Flow ID de Kapso</Label>
+                      <Label htmlFor="kapso-workflow">Kapso Workflow ID (Principal)</Label>
                       <Input
-                        id="flow-id"
-                        placeholder="Dejar vacío para usar valor por defecto"
-                        value={flowId}
-                        onChange={(e) => setFlowId(e.target.value)}
+                        id="kapso-workflow"
+                        placeholder="UUID del workflow principal"
+                        value={kapsoWorkflowId}
+                        onChange={(e) => setKapsoWorkflowId(e.target.value)}
                       />
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="whatsapp-config">WhatsApp Config ID</Label>
+                      <Label htmlFor="kapso-workflow-recordatorio">Kapso Workflow ID (Recordatorio)</Label>
                       <Input
-                        id="whatsapp-config"
-                        placeholder="Dejar vacío para usar valor por defecto"
-                        value={whatsappConfigId}
-                        onChange={(e) => setWhatsappConfigId(e.target.value)}
+                        id="kapso-workflow-recordatorio"
+                        placeholder="UUID del workflow de recordatorio"
+                        value={kapsoWorkflowIdRecordatorio}
+                        onChange={(e) => setKapsoWorkflowIdRecordatorio(e.target.value)}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="kapso-phone">Kapso Phone Number ID</Label>
+                      <Input
+                        id="kapso-phone"
+                        placeholder="WhatsApp Business Phone Number ID"
+                        value={kapsoPhoneNumberId}
+                        onChange={(e) => setKapsoPhoneNumberId(e.target.value)}
                       />
                     </div>
                     <p className="text-sm text-muted-foreground">
@@ -302,7 +393,7 @@ export default function NewCampaignPage() {
             <div className="flex justify-end">
               <Button
                 onClick={() => setCurrentStep(2)}
-                disabled={!campaignName}
+                disabled={!campaignName || !fechaFinContactacion}
                 className="bg-blue-600 hover:bg-blue-700"
               >
                 Siguiente
@@ -399,17 +490,37 @@ export default function NewCampaignPage() {
                     <span className="font-medium text-foreground">{maxDistance[0]}m</span>
                   </div>
                   <div className="flex justify-between py-2 border-b border-border">
+                    <span className="text-muted-foreground">Fecha fin de contactación:</span>
+                    <span className="font-medium text-foreground">{fechaFinContactacion || 'No definida'}</span>
+                  </div>
+                  <div className="flex justify-between py-2 border-b border-border">
+                    <span className="text-muted-foreground">Ventana 1 (Lun-Vie):</span>
+                    <span className="font-medium text-foreground">{ventana1Inicio} - {ventana1Fin}</span>
+                  </div>
+                  <div className="flex justify-between py-2 border-b border-border">
+                    <span className="text-muted-foreground">Ventana 2 (Lun-Vie):</span>
+                    <span className="font-medium text-foreground">{ventana2Inicio} - {ventana2Fin}</span>
+                  </div>
+                  <div className="flex justify-between py-2 border-b border-border">
+                    <span className="text-muted-foreground">Ventana Sábado:</span>
+                    <span className="font-medium text-foreground">{sabadoInicio} - {sabadoFin}</span>
+                  </div>
+                  <div className="flex justify-between py-2 border-b border-border">
+                    <span className="text-muted-foreground">Contactar domingos:</span>
+                    <span className="font-medium text-foreground">{contactarDomingo ? 'Sí' : 'No'}</span>
+                  </div>
+                  <div className="flex justify-between py-2 border-b border-border">
+                    <span className="text-muted-foreground">Horario de corte diario:</span>
+                    <span className="font-medium text-foreground">{horarioCorteDiario}</span>
+                  </div>
+                  <div className="flex justify-between py-2 border-b border-border">
                     <span className="text-muted-foreground">Archivo seleccionado:</span>
                     <span className="font-medium text-foreground">{selectedFile?.name}</span>
                   </div>
-                  <div className="flex justify-between py-2 border-b border-border">
-                    <span className="text-muted-foreground">Horario de envío:</span>
-                    <span className="font-medium text-foreground">{horarioInicio} - {horarioFin} (Argentina)</span>
-                  </div>
-                  {flowId && (
+                  {kapsoWorkflowId && (
                     <div className="flex justify-between py-2 border-b border-border">
-                      <span className="text-muted-foreground">Flow ID:</span>
-                      <span className="font-medium text-foreground font-mono text-sm">{flowId}</span>
+                      <span className="text-muted-foreground">Kapso Workflow ID:</span>
+                      <span className="font-medium text-foreground font-mono text-sm">{kapsoWorkflowId}</span>
                     </div>
                   )}
                 </div>

@@ -1,0 +1,8 @@
+{
+  "buildCommand": "cd autobank-dtv && npm run build",
+  "outputDirectory": "autobank-dtv/.next",
+  "devCommand": "cd autobank-dtv && npm run dev",
+  "installCommand": "cd autobank-dtv && npm install",
+  "framework": "nextjs",
+  "rewrites": [{ "source": "/(.*)", "destination": "/" }]
+}
