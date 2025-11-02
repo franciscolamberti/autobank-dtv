@@ -7,12 +7,24 @@ const corsHeaders = {
   'access-control-allow-headers': '*'
 };
 
-function obtenerTelefonoPrincipal(row: any): string | null {
-  const candidatos = [row[40], row[41], row[38], row[39]];
-  for (const tel of candidatos) {
-    if (tel && String(tel).trim()) return String(tel).trim();
+function obtenerTelefonoPrincipal(row: any): { telefono: string | null; probableFijo: boolean } {
+  // Prioridad: 40 (FaxInstalacion) > 41 (Fax2Instalacion) > 38 (Particular) > 39 (Laboral)
+  // Columnas 40 y 41 son móviles (WhatsApp válido)
+  // Columnas 38 y 39 son fijos (sin WhatsApp)
+  
+  if (row[40] && String(row[40]).trim()) {
+    return { telefono: String(row[40]).trim(), probableFijo: false };
   }
-  return null;
+  if (row[41] && String(row[41]).trim()) {
+    return { telefono: String(row[41]).trim(), probableFijo: false };
+  }
+  if (row[38] && String(row[38]).trim()) {
+    return { telefono: String(row[38]).trim(), probableFijo: true };
+  }
+  if (row[39] && String(row[39]).trim()) {
+    return { telefono: String(row[39]).trim(), probableFijo: true };
+  }
+  return { telefono: null, probableFijo: false };
 }
 
 function normalizarTelefonoE164(original: string | null): string | null {
@@ -191,7 +203,7 @@ Deno.serve(async (req) => {
         }
       }
 
-      const tel = obtenerTelefonoPrincipal(row);
+      const { telefono: tel, probableFijo } = obtenerTelefonoPrincipal(row);
       if (!tel) continue;
       const normalizado = normalizarTelefonoE164(tel) || tel;
 
@@ -201,6 +213,7 @@ Deno.serve(async (req) => {
         nroWO: String(row[1] || '').trim(),
         telefonoPrincipal: tel,
         telefonoNormalizado: normalizado,
+        probableFijo,
         apellidoNombre: String(row[28] || '').trim(),
         dni: String(row[29] || '').trim(),
         direccionCompleta: `${String(row[30] || '').trim()} ${String(row[31] || '').trim()}`.trim(),
@@ -319,7 +332,11 @@ Deno.serve(async (req) => {
         if (esDentro) dentro++; else fuera++;
 
         let tieneWhatsapp: boolean | null = null;
-        if (validarWa) {
+        // Si es teléfono fijo (cols 38-39), marcar como sin WhatsApp
+        if (p.probableFijo) {
+          tieneWhatsapp = false;
+        } else if (validarWa) {
+          // Si es móvil (cols 40-41) y flag activado, validar con Kapso
           const telNorm = p.telefonoNormalizado || p.telefonoPrincipal;
           if (telNorm && typeof telNorm === 'string') {
             tieneWhatsapp = await validarWhatsappKapso(telNorm);
