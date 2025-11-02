@@ -188,13 +188,15 @@ Deno.serve(async (req) => {
     }
 
     let distanciaMax = 2000;
+    let kapsoPhoneNumberId: string | null = null;
     {
       const { data: campana } = await supabase
         .from('campanas')
-        .select('distancia_max')
+        .select('distancia_max, kapso_phone_number_id')
         .eq('id', campana_id)
         .single();
       if (campana && typeof campana.distancia_max === 'number') distanciaMax = campana.distancia_max;
+      if (campana && typeof campana.kapso_phone_number_id === 'string') kapsoPhoneNumberId = campana.kapso_phone_number_id;
     }
 
     const { data: puntosPickit } = await supabase
@@ -205,6 +207,27 @@ Deno.serve(async (req) => {
     let dentro = 0;
     let fuera = 0;
     const fueraRangoListado: any[] = [];
+
+    const validarWa = (Deno.env.get('VALIDAR_WA') || 'false').toLowerCase() === 'true';
+    const kapsoApiKey = Deno.env.get('KAPSO_API_KEY') || null;
+
+    async function validarWhatsappKapso(telefonoNormalizado: string): Promise<boolean | null> {
+      if (!kapsoPhoneNumberId || !kapsoApiKey || !telefonoNormalizado.startsWith('+54')) return null;
+      const waId = telefonoNormalizado.replace(/^\+/, '');
+      const url = `https://api.kapso.ai/meta/whatsapp/v23.0/${kapsoPhoneNumberId}/contacts/${waId}`;
+      const controller = new AbortController();
+      const t = setTimeout(() => controller.abort(), 5000);
+      try {
+        const res = await fetch(url, { headers: { 'X-API-Key': kapsoApiKey }, signal: controller.signal });
+        clearTimeout(t);
+        if (res.status === 200) return true;
+        if (res.status === 404) return null;
+        return null;
+      } catch (_) {
+        clearTimeout(t);
+        return null;
+      }
+    }
 
     if (Array.isArray(puntosPickit) && puntosPickit.length > 0) {
       for (const p of deduplicadas) {
@@ -219,6 +242,14 @@ Deno.serve(async (req) => {
         }
         const esDentro = min <= distanciaMax;
         if (esDentro) dentro++; else fuera++;
+
+        let tieneWhatsapp: boolean | null = null;
+        if (validarWa) {
+          const telNorm = p.telefonoNormalizado || p.telefonoPrincipal;
+          if (telNorm && typeof telNorm === 'string') {
+            tieneWhatsapp = await validarWhatsappKapso(telNorm);
+          }
+        }
 
         const registro = {
           campana_id,
@@ -241,7 +272,7 @@ Deno.serve(async (req) => {
           distancia_metros: min,
           dentro_rango: esDentro,
           fuera_de_rango: !esDentro,
-          tiene_whatsapp: null,
+          tiene_whatsapp: tieneWhatsapp,
           estado_contacto: 'pendiente',
           razon_creacion: null,
           estado_cliente_original: null
