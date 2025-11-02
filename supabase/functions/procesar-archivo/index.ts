@@ -43,6 +43,16 @@ function normalizarTelefonoE164(telefono: string | null): string | null {
   return null;
 }
 
+function haversine(lat1: number, lon1: number, lat2: number, lon2: number): number {
+  const R = 6371000;
+  const toRad = (deg: number) => (deg * Math.PI) / 180;
+  const dLat = toRad(lat2 - lat1);
+  const dLon = toRad(lon2 - lon1);
+  const a = Math.sin(dLat / 2) ** 2 + Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon / 2) ** 2;
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return R * c;
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { status: 200, headers: corsHeaders });
@@ -53,7 +63,7 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const { bucket, path } = await req.json();
+    const { bucket, path, campana_id } = await req.json();
     if (!bucket || !path) {
       return new Response(
         JSON.stringify({ error: 'faltan parámetros: bucket, path' }),
@@ -97,7 +107,6 @@ Deno.serve(async (req) => {
       rows.push(row);
     }
 
-    // Construir personas y deduplicar
     const personas: any[] = [];
     for (let i = 1; i < rows.length; i++) {
       const row = rows[i] || [];
@@ -165,13 +174,45 @@ Deno.serve(async (req) => {
       if (!exists) deduplicadas.push(v);
     }
 
+    let distanciaMax = 2000;
+    if (campana_id) {
+      const { data: campana } = await supabase
+        .from('campanas')
+        .select('distancia_max')
+        .eq('id', campana_id)
+        .single();
+      if (campana && typeof campana.distancia_max === 'number') distanciaMax = campana.distancia_max;
+    }
+
+    const { data: puntosPickit } = await supabase
+      .from('puntos_pickit')
+      .select('id, nombre, direccion, lat, lon');
+
+    let dentro = 0;
+    let fuera = 0;
+
+    if (Array.isArray(puntosPickit) && puntosPickit.length > 0) {
+      for (const p of deduplicadas) {
+        let min = Infinity;
+        for (const pt of puntosPickit) {
+          const d = haversine(p.lat, p.lon, pt.lat, pt.lon);
+          if (d < min) min = d;
+        }
+        if (min <= distanciaMax) dentro++;
+        else fuera++;
+      }
+    }
+
     return new Response(
       JSON.stringify({
         ok: true,
-        stage: 'normalize-dedupe',
+        stage: 'distancias',
         totalRows: rows.length,
         personasRaw: personas.length,
-        personasDeduplicadas: deduplicadas.length
+        personasDeduplicadas: deduplicadas.length,
+        personasDentroRango: dentro,
+        personasFueraRango: fuera,
+        distanciaMax
       }),
       {
         status: 200,
@@ -182,7 +223,7 @@ Deno.serve(async (req) => {
     return new Response(
       JSON.stringify({
         ok: false,
-        stage: 'normalize-dedupe',
+        stage: 'distancias',
         error: error instanceof Error ? error.message : 'unknown error'
       }),
       {
