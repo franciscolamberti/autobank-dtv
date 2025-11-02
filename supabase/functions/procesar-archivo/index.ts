@@ -117,18 +117,21 @@ serve(async (req) => {
     
     // Leer Excel
     const arrayBuffer = await fileData.arrayBuffer()
-    const workbook = XLSX.read(new Uint8Array(arrayBuffer), { type: 'array', cellDates: true })
+    const workbook = XLSX.read(new Uint8Array(arrayBuffer), { type: 'array' })
     const sheet = workbook.Sheets[workbook.SheetNames[0]]
     
-    // Obtener el rango real de la hoja
-    const range = XLSX.utils.decode_range(sheet['!ref'] || 'A1')
-    console.log(`Rango del Excel: ${sheet['!ref']}, filas: ${range.e.r + 1}`)
+    // Usar sheet_to_json con opción 'raw: true' para no convertir valores
+    const data = XLSX.utils.sheet_to_json(sheet, { 
+      header: 1,
+      defval: null,
+      raw: true,
+      blankrows: true
+    })
     
-    // Leer todas las filas SIN filtrar blankrows
-    const data = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: null, raw: false })
-    
-    console.log(`Excel parseado: ${data.length} filas totales`)
-    console.log(`Segunda fila (datos): col0=${data[1]?.[0]}, col32=${data[1]?.[32]}, col33=${data[1]?.[33]}`)
+    console.log(`Excel parseado: ${data.length} filas, primera fila tiene ${data[0]?.length} columnas`)
+    if (data[1]) {
+      console.log(`Fila 2: nroCliente=${data[1][0]}, lat=${data[1][33]}, lon=${data[1][32]}, tel=${data[1][40]}`)
+    }
     
     // Obtener puntos Pickit
     const { data: puntosPickit, error: puntosError } = await supabase
