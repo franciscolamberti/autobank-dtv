@@ -15,35 +15,55 @@ function obtenerTelefonoPrincipal(row: any): string | null {
   return null;
 }
 
-function normalizarTelefonoE164(telefono: string | null): string | null {
-  if (!telefono) return null;
-  let limpio = telefono.trim().replace(/[^\d+]/g, '');
-  if (!limpio) return null;
+function normalizarTelefonoE164(original: string | null): string | null {
+  if (!original) return null;
+  let s = String(original).trim();
+  // Keep '+' for final build only
+  s = s.replace(/[^\d+]/g, '');
+  // Remove leading '+' and '00'
+  if (s.startsWith('+')) s = s.slice(1);
+  if (s.startsWith('00')) s = s.slice(2);
+  // Strip country code if present
+  if (s.startsWith('54')) s = s.slice(2);
+  // Remove trunk '0'
+  if (s.startsWith('0')) s = s.slice(1);
 
-  if (limpio.startsWith('+54')) {
-    return limpio.length >= 12 && limpio.length <= 13 ? limpio : null;
+  // Handle Buenos Aires (11)
+  if (s.startsWith('11')) {
+    let local = s.slice(2);
+    if (local.startsWith('15')) local = local.slice(2);
+    // Use 8 digits for BA local
+    local = local.replace(/\D/g, '').slice(0, 8);
+    if (local.length < 6) return null;
+    return `+54911${local}`;
   }
-  if (limpio.startsWith('54')) {
-    const sin = limpio.slice(2);
-    return sin.length >= 10 ? `+54${sin}` : null;
+
+  // Generic area codes (2-4 digits). Approximate by taking first 3 or 4 if length allows.
+  // Prefer 3-digit area code if number seems to include mobile '15'
+  let area = '';
+  let local = '';
+  // Try 4-digit area first (common), else 3, else 2
+  for (const len of [4, 3, 2]) {
+    if (s.length >= len + 6) { // ensure reasonable local length remains
+      area = s.slice(0, len);
+      local = s.slice(len);
+      break;
+    }
   }
-  if (limpio.startsWith('011')) {
-    const rest = limpio.slice(3);
-    return rest.length >= 8 ? `+54911${rest}` : null;
+  if (!area) {
+    // Fallback: if total 10 digits, assume BA without explicit 11 (rare)
+    if (/^\d{10}$/.test(s)) {
+      let loc = s;
+      if (loc.startsWith('15')) loc = loc.slice(2);
+      loc = loc.slice(0, 8);
+      return `+54911${loc}`;
+    }
+    return null;
   }
-  if (limpio.startsWith('11')) {
-    const rest = limpio.slice(2);
-    return rest.length >= 8 ? `+54911${rest}` : null;
-  }
-  if (limpio.startsWith('0') && limpio.length >= 8) {
-    const area = limpio.slice(1, 4);
-    const numero = limpio.slice(4);
-    return numero.length >= 6 ? `+54${area}${numero}` : null;
-  }
-  if (/^\d{10}$/.test(limpio)) {
-    return `+54911${limpio}`;
-  }
-  return null;
+  if (local.startsWith('15')) local = local.slice(2);
+  local = local.replace(/\D/g, '').slice(0, 8);
+  if (local.length < 6) return null;
+  return `+549${area}${local}`;
 }
 
 function haversine(lat1: number, lon1: number, lat2: number, lon2: number): number {
@@ -152,12 +172,17 @@ Deno.serve(async (req) => {
       const row = rows[i] || [];
       const lonRaw = row[32];
       const latRaw = row[33];
-      if (latRaw == null || lonRaw == null) continue;
-      let lat = parseFloat(latRaw);
-      let lon = parseFloat(lonRaw);
-      if (isNaN(lat) || isNaN(lon)) continue;
-      if (Math.abs(lat) > 180) lat = lat / 1000000;
-      if (Math.abs(lon) > 180) lon = lon / 1000000;
+
+      let lat: number | null = null;
+      let lon: number | null = null;
+      if (latRaw != null && lonRaw != null) {
+        const latNum = parseFloat(latRaw);
+        const lonNum = parseFloat(lonRaw);
+        if (!Number.isNaN(latNum) && !Number.isNaN(lonNum)) {
+          lat = Math.abs(latNum) > 180 ? latNum / 1000000 : latNum;
+          lon = Math.abs(lonNum) > 180 ? lonNum / 1000000 : lonNum;
+        }
+      }
 
       const tel = obtenerTelefonoPrincipal(row);
       if (!tel) continue;
@@ -220,6 +245,7 @@ Deno.serve(async (req) => {
           ok: true,
           stage: 'db-insert-skip',
           reason: 'campana_id requerido para insertar en DB',
+          totalRowsExcel: rows.length,
           personasRaw: personas.length,
           personasDeduplicadas: deduplicadas.length
         }),
@@ -271,16 +297,18 @@ Deno.serve(async (req) => {
 
     if (Array.isArray(puntosPickit) && puntosPickit.length > 0) {
       for (const p of deduplicadas) {
-        let min = Infinity;
+        let min: number | null = null;
         let nearest: any = null;
-        for (const pt of puntosPickit) {
-          const d = haversine(p.lat, p.lon, pt.lat, pt.lon);
-          if (d < min) {
-            min = d;
-            nearest = pt;
+        if (typeof p.lat === 'number' && typeof p.lon === 'number') {
+          for (const pt of puntosPickit) {
+            const d = haversine(p.lat, p.lon, pt.lat, pt.lon);
+            if (min === null || d < min) {
+              min = d;
+              nearest = pt;
+            }
           }
         }
-        const esDentro = min <= distanciaMax;
+        const esDentro = min !== null && min <= distanciaMax;
         if (esDentro) dentro++; else fuera++;
 
         let tieneWhatsapp: boolean | null = null;
@@ -310,7 +338,7 @@ Deno.serve(async (req) => {
           lon: p.lon,
           punto_pickit_id: nearest ? nearest.id : null,
           distancia_metros: min,
-          dentro_rango: esDentro,
+          dentro_rango: !!esDentro,
           fuera_de_rango: !esDentro,
           tiene_whatsapp: tieneWhatsapp,
           estado_contacto: 'pendiente',
@@ -334,9 +362,9 @@ Deno.serve(async (req) => {
             'CP': registro.cp || '',
             'Localidad': registro.localidad || '',
             'Provincia': registro.provincia || '',
-            'Latitud': registro.lat || '',
-            'Longitud': registro.lon || '',
-            'Distancia (metros)': Math.round(min || 0),
+            'Latitud': registro.lat ?? '',
+            'Longitud': registro.lon ?? '',
+            'Distancia (metros)': min != null ? Math.round(min) : '',
             'Punto Pickit': nearest?.nombre || '',
             'Dirección Punto Pickit': nearest?.direccion || ''
           });
@@ -396,7 +424,7 @@ Deno.serve(async (req) => {
       JSON.stringify({
         ok: true,
         stage: 'db-insert',
-        totalRows: rows.length,
+        totalRowsExcel: rows.length,
         personasRaw: personas.length,
         personasDeduplicadas: deduplicadas.length,
         personasDentroRango: dentro,
