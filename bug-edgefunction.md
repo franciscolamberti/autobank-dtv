@@ -1,22 +1,30 @@
-# Bug: Edge Function procesar-archivo - No arranca (503 BOOT_ERROR)
+# Bug: Edge Function procesar-archivo - RESUELTO
 
 **Fecha:** 2 de Noviembre, 2025  
-**Prioridad:** CRÍTICA
+**Estado:** RESUELTO ✅  
+**Versión:** v35
 
 ---
 
-## El Problema
+## Resolución Final
 
-La Edge Function `procesar-archivo` en Supabase **no arranca** (error 503 BOOT_ERROR).
+La Edge Function `procesar-archivo` ahora funciona correctamente:
+1. Lee el Excel completo (642 filas usando decode_range)
+2. Normaliza teléfonos a formato E.164 argentino (elimina '15' tras código de área)
+3. Deduplica por `nro_cliente` (primary) y teléfono (fallback)
+4. Calcula distancias a puntos Pickit
+5. Inserta personas en la base de datos en lotes de 500
+6. Genera Excel de "fuera de rango"
+7. Incluye filas sin coordenadas como fuera_de_rango
 
-Esta función debe procesar archivos Excel subidos desde el frontend y:
-1. Leer el Excel
-2. Normalizar teléfonos a formato E.164
-3. Deduplicar por `nro_cliente`
-4. Calcular distancias a puntos Pickit
-5. Insertar personas en la base de datos
-
-**Actualmente:** La función crashea al inicio y nunca llega a ejecutar código.
+**Cambios aplicados:**
+- Skeleton mínimo con boot estable (Deno.serve)
+- Import dinámico de xlsx y supabase-js
+- Lectura completa por decode_range (no sheet_to_json)
+- Normalización E.164 mejorada
+- Schema DB: lat/lon/distancia_metros ahora nullable
+- Derivación de campana_id desde path si falta
+- Hardening: validaciones, caps, timeouts
 
 ---
 
