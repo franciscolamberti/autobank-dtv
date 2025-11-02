@@ -1,3 +1,6 @@
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+declare const Deno: any;
+
 const corsHeaders = {
   'access-control-allow-origin': '*',
   'access-control-allow-methods': 'POST,OPTIONS',
@@ -64,13 +67,14 @@ Deno.serve(async (req) => {
 
   try {
     const { bucket, path, campana_id } = await req.json();
-    if (!bucket || !path) {
+    if (typeof bucket !== 'string' || typeof path !== 'string' || bucket.trim() === '' || path.trim() === '') {
       return new Response(
-        JSON.stringify({ error: 'faltan parámetros: bucket, path' }),
+        JSON.stringify({ error: 'parámetros inválidos: bucket y path (string no vacío)' }),
         { status: 400, headers: { 'content-type': 'application/json', ...corsHeaders } }
       );
     }
 
+    // @ts-ignore - remote import in Deno runtime
     const { createClient } = await import('https://esm.sh/@supabase/supabase-js@2');
     const supabaseUrl = Deno.env.get('SUPABASE_URL') || '';
     const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
@@ -81,20 +85,49 @@ Deno.serve(async (req) => {
       .from(bucket)
       .download(path);
 
-    if (downloadError) {
+    if (downloadError || !fileData) {
       return new Response(
-        JSON.stringify({ error: `error descargando archivo: ${downloadError.message}` }),
+        JSON.stringify({ error: `error descargando archivo: ${downloadError?.message || 'blob vacío'}` }),
         { status: 500, headers: { 'content-type': 'application/json', ...corsHeaders } }
       );
     }
 
     const arrayBuffer = await fileData.arrayBuffer();
 
+    // @ts-ignore - remote import in Deno runtime
     const XLSX = await import('https://esm.sh/xlsx@0.18.5');
     const workbook = XLSX.read(new Uint8Array(arrayBuffer), { type: 'array' });
+    if (!workbook || !Array.isArray(workbook.SheetNames) || workbook.SheetNames.length === 0) {
+      return new Response(
+        JSON.stringify({ error: 'Excel inválido: sin hojas' }),
+        { status: 400, headers: { 'content-type': 'application/json', ...corsHeaders } }
+      );
+    }
     const sheet = workbook.Sheets[workbook.SheetNames[0]];
+    if (!sheet) {
+      return new Response(
+        JSON.stringify({ error: 'Excel inválido: hoja 0 inexistente' }),
+        { status: 400, headers: { 'content-type': 'application/json', ...corsHeaders } }
+      );
+    }
+
     const ref = sheet['!ref'] || 'A1';
     const range = XLSX.utils.decode_range(ref);
+    if (range.e.r < 0 || range.e.c < 0) {
+      return new Response(
+        JSON.stringify({ error: 'Excel vacío (sin rango válido)' }),
+        { status: 400, headers: { 'content-type': 'application/json', ...corsHeaders } }
+      );
+    }
+
+    const MAX_EXCEL_ROWS = parseInt(Deno.env.get('MAX_EXCEL_ROWS') || '20000');
+    const totalRowsExpected = range.e.r + 1;
+    if (totalRowsExpected > MAX_EXCEL_ROWS) {
+      return new Response(
+        JSON.stringify({ error: `Excel demasiado grande: ${totalRowsExpected} filas (máximo ${MAX_EXCEL_ROWS})` }),
+        { status: 413, headers: { 'content-type': 'application/json', ...corsHeaders } }
+      );
+    }
 
     const rows: any[] = [];
     for (let R = 0; R <= range.e.r; R++) {
@@ -105,6 +138,13 @@ Deno.serve(async (req) => {
         row.push(cell ? cell.v : null);
       }
       rows.push(row);
+    }
+
+    if (rows.length <= 1) {
+      return new Response(
+        JSON.stringify({ error: 'Excel sin datos (solo encabezado o vacío)' }),
+        { status: 400, headers: { 'content-type': 'application/json', ...corsHeaders } }
+      );
     }
 
     const personas: any[] = [];
@@ -321,7 +361,8 @@ Deno.serve(async (req) => {
 
     // Generar export fuera de rango
     let exportFileName: string | null = null;
-    if (fueraRangoListado.length > 0) {
+    const MAX_EXPORT_ROWS = parseInt(Deno.env.get('MAX_EXPORT_ROWS') || '15000');
+    if (fueraRangoListado.length > 0 && fueraRangoListado.length <= MAX_EXPORT_ROWS) {
       const ws = XLSX.utils.json_to_sheet(fueraRangoListado);
       const wb = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(wb, ws, 'Fuera de Rango');
