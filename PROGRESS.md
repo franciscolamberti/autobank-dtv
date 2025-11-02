@@ -1,24 +1,32 @@
-# Progress
+# Progress - Actualizado 2 Nov 2025
 
-## Completado
+## ✅ Completado
 
 ### Base de Datos
 - Tabla `puntos_pickit` con 26 puntos
-- Tabla `campañas` con configuración completa
+- Tabla `campañas` con configuración completa PRD
 - Tabla `personas_contactar` con ubicación, distancias y estados
   - Campos array `nros_cliente` y `nros_wo`
   - Campo `cantidad_decos` para contador
+  - **Campos lat/lon/distancia_metros ahora nullable** (permite filas sin coordenadas)
 - Storage bucket `archivos-dtv` con políticas
 - Índices optimizados y triggers
+- Migration `allow_null_coords_and_distance` aplicada ✅
 
-### Backend
-- Edge function `procesar-archivo` deployada y actualizada
-  - Procesa Excel desde storage
-  - Calcula distancias haversine
-  - **Deduplicación por telefono_principal**
-  - Agrupa múltiples decoders por persona
-  - Inserta personas deduplicated en DB
-  - Actualiza contadores de campaña
+### Backend - Edge Functions
+- **Edge function `procesar-archivo` v37** - COMPLETAMENTE FUNCIONAL ✅
+  - ✅ Boot estable (sin BOOT_ERROR)
+  - ✅ Lectura completa de Excel (642 filas con decode_range)
+  - ✅ Normalización E.164 argentina (sin duplicar '15')
+  - ✅ Detección de teléfonos fijos vs móviles
+  - ✅ Deduplicación por nro_cliente (primary) y teléfono (fallback)
+  - ✅ Calcula distancias Haversine
+  - ✅ Agrupa múltiples decodificadores por persona
+  - ✅ Inserta en DB en lotes de 500
+  - ✅ Genera Excel "Fuera de Rango" automático
+  - ✅ Feature flag VALIDAR_WA para validación Kapso
+  - ✅ Hardening: validaciones, timeouts, caps configurables
+  - ✅ Maneja filas sin coordenadas (fuera_de_rango=true)
   
 - Edge function `webhook-kapso` deployada
   - Recibe POST requests desde Kapso
@@ -42,44 +50,42 @@
   - Variables Kapso: nros_cliente, cantidad_decos, texto_deco
 
 ### Frontend
-- Proyecto Next.js 16 `autobank-dtv`
+- **Proyecto Next.js 16 `autobank-dtv`** - Deployado en Vercel ✅
+  - URL: https://autobank-dtv.vercel.app
 
-- Página dashboard (/)
+- **Página dashboard (/)** ✅
   - Muestra campañas desde DB
-  - **5 cards de estadísticas** (incluye total decodificadores)
+  - 5 cards de estadísticas (incluye total decodificadores)
   - Estadísticas en tiempo real
   - Tabla de campañas con filtros
   - Links a detalle de campaña
 
-- Página nueva campaña (/campañas/nueva)
+- **Página nueva campaña (/campañas/nueva)** ✅
   - Wizard de 3 pasos
   - Upload a storage
-  - Invoca edge function
-  - Configuración de distancia_max
+  - Invoca edge function procesar-archivo
+  - Configuración completa PRD (distancia, horarios, workflows)
 
-- **Página detalle de campaña** (/campañas/[id])
-  - Métricas en tiempo real con actualización automática
+- **Página detalle de campaña (/campañas/[id])** ✅
+  - **5 buckets PRD implementados:**
+    1. Comprometidos (con fecha_compromiso)
+    2. In Progress / Contactados (encolado, enviado, respondió)
+    3. Fuera de Rango (distancia > max o sin coords)
+    4. Sin WhatsApp (teléfonos fijos detectados automáticamente)
+    5. Atención Especial (rechazados o retiro domicilio)
+  - **Badge "X decos"** visible cuando cantidad_decos > 1 ✅
+  - Métricas en tiempo real con subscripción Realtime
   - Botón "Enviar Mensajes" integrado con Cloudflare Worker
-  - Progreso visual con barra de progreso
-  - Estadísticas detalladas por estado
-  - Tasas de respuesta y confirmación
-  - Total de decodificadores en la campaña
-  - Configuración de campaña (distancia, horario, zona horaria)
-  - Link a vista de personas
+  - Export a Excel por bucket
+  - Checkbox de devolución por persona
+  - Configuración de campaña visible
   
-- **Página lista de personas** (/campañas/[id]/personas)
-  - Tabla completa de personas con paginación
-  - **Filtros avanzados:**
-    - Búsqueda por nombre, teléfono, DNI, nro cliente
-    - Estado de contacto
-    - Dentro/fuera de rango
-    - Localidad
-    - Punto Pickit
-  - **Exportar a Excel** con todos los datos
-  - Cambio manual de estado por persona
-  - Muestra cantidad de decodificadores por persona
-  - Información de punto Pickit más cercano
-  - Distancia en metros
+- **Página lista de personas (/campañas/[id]/personas)** ✅
+  - Tabla completa con paginación
+  - Filtros avanzados: nombre, teléfono, DNI, estado, rango, localidad, punto
+  - Exportar a Excel con todos los datos
+  - Cambio manual de estado
+  - Muestra cantidad_decos, distancia, punto Pickit
 
 - Integración Supabase client configurada
 - UI con shadcn/ui components
@@ -97,16 +103,18 @@
   - Valida agrupación correcta por teléfono
 
 ### Documentación
-- `decisiones-cliente.md`: registro de decisiones técnicas pendientes de validación
-- **`DEPLOYMENT.md`**: guía completa de deployment con instrucciones paso a paso
-  - Configuración de Cloudflare Worker
-  - Obtención de credenciales Kapso
-  - Testing end-to-end
-  - Activación de producción
-  - Troubleshooting
-  - Comandos útiles
-- Documentación actualizada en WARP.md, PRD.md, README.md
-- Cleanup de archivos obsoletos
+- ✅ **`EDGE_FUNCTION_RESOLUTION.md`**: resolución completa bug BOOT_ERROR
+  - Problema A: BOOT_ERROR (503) - RESUELTO
+  - Problema B: Solo 18 de 642 filas - RESUELTO
+  - Problema C: Teléfonos con '15' duplicado - RESUELTO
+  - Problema D: Filas sin coordenadas descartadas - RESUELTO
+  - Commits detallados y verificación
+- ✅ `bug-edgefunction.md`: actualizado con estado RESUELTO
+- ✅ `README.md`: actualizado con características finales
+- ✅ `PROGRESS.md`: actualizado con estado actual
+- `decisiones-cliente.md`: registro de decisiones técnicas
+- **`DEPLOYMENT.md`**: guía completa de deployment
+- Documentación completa en WARP.md, PRD.md, SETUP_GUIDE.md
 
 ---
 
@@ -216,15 +224,18 @@
 - **Testing**: 2 scripts Python de generación de datos
 
 ### Edge Functions Deployadas
-1. `procesar-archivo` - Procesamiento de Excel con deduplicación
-2. `webhook-kapso` - Receptor de respuestas de Kapso
-3. `recalcular-distancias` - Actualización de rangos
+1. ✅ `procesar-archivo` (v37) - Procesamiento Excel completo con deduplicación
+2. ✅ `webhook-kapso` (v2) - Receptor de respuestas de Kapso
+3. ✅ `recalcular-distancias` (v2) - Actualización de rangos
+4. ✅ `generar-corte-diario` (v1) - Export diario para Pickit
 
 ### URLs del Sistema
-- **Supabase Project**: `https://fobaguhlzpwrzdhyyyje.supabase.co`
-- **Edge Functions Base**: `https://fobaguhlzpwrzdhyyyje.supabase.co/functions/v1/`
+- **Frontend Producción**: https://autobank-dtv.vercel.app ✅
+- **Supabase Project**: `https://fobaguhlzpwrzdhyyyje.supabase.co` ✅
+- **Edge Functions Base**: `https://fobaguhlzpwrzdhyyyje.supabase.co/functions/v1/` ✅
 - **Frontend Local**: `http://localhost:3000`
 - **Worker** (pendiente deploy): `https://enviar-campana.*.workers.dev`
+- **GitHub Repo**: https://github.com/franciscolamberti/autobank-dtv ✅
 
 ---
 
