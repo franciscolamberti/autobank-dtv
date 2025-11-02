@@ -204,6 +204,7 @@ Deno.serve(async (req) => {
     const personasParaInsertar: any[] = [];
     let dentro = 0;
     let fuera = 0;
+    const fueraRangoListado: any[] = [];
 
     if (Array.isArray(puntosPickit) && puntosPickit.length > 0) {
       for (const p of deduplicadas) {
@@ -219,7 +220,7 @@ Deno.serve(async (req) => {
         const esDentro = min <= distanciaMax;
         if (esDentro) dentro++; else fuera++;
 
-        personasParaInsertar.push({
+        const registro = {
           campana_id,
           fila_archivo: p.fila,
           nro_cliente: p.nroCliente || null,
@@ -244,7 +245,31 @@ Deno.serve(async (req) => {
           estado_contacto: 'pendiente',
           razon_creacion: null,
           estado_cliente_original: null
-        });
+        };
+
+        personasParaInsertar.push(registro);
+
+        if (!esDentro) {
+          fueraRangoListado.push({
+            'Nro Cliente': registro.nro_cliente || '',
+            'Nro WO': registro.nro_wo || '',
+            'Nros Cliente': (registro.nros_cliente || []).join(', '),
+            'Nros WO': (registro.nros_wo || []).join(', '),
+            'Cantidad Decos': registro.cantidad_decos || 1,
+            'Apellido y Nombre': p.apellidoNombre || '',
+            'DNI': p.dni || '',
+            'Teléfono Principal': registro.telefono_principal || '',
+            'Dirección Completa': registro.direccion_completa || '',
+            'CP': registro.cp || '',
+            'Localidad': registro.localidad || '',
+            'Provincia': registro.provincia || '',
+            'Latitud': registro.lat || '',
+            'Longitud': registro.lon || '',
+            'Distancia (metros)': Math.round(min || 0),
+            'Punto Pickit': nearest?.nombre || '',
+            'Dirección Punto Pickit': nearest?.direccion || ''
+          });
+        }
       }
     }
 
@@ -261,6 +286,24 @@ Deno.serve(async (req) => {
           { status: 500, headers: { 'content-type': 'application/json', ...corsHeaders } }
         );
       }
+    }
+
+    // Generar export fuera de rango
+    let exportFileName: string | null = null;
+    if (fueraRangoListado.length > 0) {
+      const ws = XLSX.utils.json_to_sheet(fueraRangoListado);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, 'Fuera de Rango');
+      const excelBuffer = XLSX.write(wb, { type: 'array', bookType: 'xlsx' });
+      const excelUint8 = new Uint8Array(excelBuffer);
+      const name = `export-fuera-rango-${campana_id}-${Date.now()}.xlsx`;
+      const { error: uploadError } = await supabase
+        .storage
+        .from('archivos-dtv')
+        .upload(`${campana_id}/${name}`, excelUint8, {
+          contentType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+        });
+      if (!uploadError) exportFileName = name;
     }
 
     // Actualizar campaña
@@ -285,7 +328,8 @@ Deno.serve(async (req) => {
         personasRaw: personas.length,
         personasDeduplicadas: deduplicadas.length,
         personasDentroRango: dentro,
-        personasFueraRango: fuera
+        personasFueraRango: fuera,
+        export_fuera_rango: exportFileName
       }),
       { status: 200, headers: { 'content-type': 'application/json', ...corsHeaders } }
     );
