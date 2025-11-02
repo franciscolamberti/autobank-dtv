@@ -455,15 +455,15 @@ async function generarExportFueraRango(
     const wb = XLSX.utils.book_new()
     XLSX.utils.book_append_sheet(wb, ws, 'Fuera de Rango')
 
-    // Convertir a buffer
+    // Convertir a buffer (Uint8Array compatible con Deno)
     const excelBuffer = XLSX.write(wb, { type: 'array', bookType: 'xlsx' })
-    const excelBlob = new Blob([excelBuffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })
+    const excelUint8 = new Uint8Array(excelBuffer)
 
     // Subir a Storage
     const fileName = `export-fuera-rango-${campanaId}-${Date.now()}.xlsx`
     const { data: uploadData, error: uploadError } = await supabase.storage
       .from('archivos-dtv')
-      .upload(`${campanaId}/${fileName}`, excelBlob, {
+      .upload(`${campanaId}/${fileName}`, excelUint8, {
         contentType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
       })
 
