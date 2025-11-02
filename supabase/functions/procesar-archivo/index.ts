@@ -174,8 +174,21 @@ Deno.serve(async (req) => {
       if (!exists) deduplicadas.push(v);
     }
 
+    if (!campana_id) {
+      return new Response(
+        JSON.stringify({
+          ok: true,
+          stage: 'db-insert-skip',
+          reason: 'campana_id requerido para insertar en DB',
+          personasRaw: personas.length,
+          personasDeduplicadas: deduplicadas.length
+        }),
+        { status: 200, headers: { 'content-type': 'application/json', ...corsHeaders } }
+      );
+    }
+
     let distanciaMax = 2000;
-    if (campana_id) {
+    {
       const { data: campana } = await supabase
         .from('campanas')
         .select('distancia_max')
@@ -188,48 +201,102 @@ Deno.serve(async (req) => {
       .from('puntos_pickit')
       .select('id, nombre, direccion, lat, lon');
 
+    const personasParaInsertar: any[] = [];
     let dentro = 0;
     let fuera = 0;
 
     if (Array.isArray(puntosPickit) && puntosPickit.length > 0) {
       for (const p of deduplicadas) {
         let min = Infinity;
+        let nearest: any = null;
         for (const pt of puntosPickit) {
           const d = haversine(p.lat, p.lon, pt.lat, pt.lon);
-          if (d < min) min = d;
+          if (d < min) {
+            min = d;
+            nearest = pt;
+          }
         }
-        if (min <= distanciaMax) dentro++;
-        else fuera++;
+        const esDentro = min <= distanciaMax;
+        if (esDentro) dentro++; else fuera++;
+
+        personasParaInsertar.push({
+          campana_id,
+          fila_archivo: p.fila,
+          nro_cliente: p.nroCliente || null,
+          nro_wo: p.nroWO || null,
+          nros_cliente: p.nrosCliente || [],
+          nros_wo: p.nrosWO || [],
+          cantidad_decos: p.cantidadDecos || 1,
+          apellido_nombre: p.apellidoNombre || null,
+          dni: p.dni || null,
+          telefono_principal: p.telefonoNormalizado || p.telefonoPrincipal,
+          direccion_completa: p.direccionCompleta || null,
+          cp: p.cp || null,
+          localidad: p.localidad || null,
+          provincia: p.provincia || null,
+          lat: p.lat,
+          lon: p.lon,
+          punto_pickit_id: nearest ? nearest.id : null,
+          distancia_metros: min,
+          dentro_rango: esDentro,
+          fuera_de_rango: !esDentro,
+          tiene_whatsapp: null,
+          estado_contacto: 'pendiente',
+          razon_creacion: null,
+          estado_cliente_original: null
+        });
+      }
+    }
+
+    // Insertar en lotes
+    const chunkSize = 500;
+    for (let i = 0; i < personasParaInsertar.length; i += chunkSize) {
+      const slice = personasParaInsertar.slice(i, i + chunkSize);
+      const { error: insertError } = await supabase
+        .from('personas_contactar')
+        .insert(slice);
+      if (insertError) {
+        return new Response(
+          JSON.stringify({ error: `error insertando personas: ${insertError.message}` }),
+          { status: 500, headers: { 'content-type': 'application/json', ...corsHeaders } }
+        );
+      }
+    }
+
+    // Actualizar campaña
+    {
+      const { error: updateError } = await supabase
+        .from('campanas')
+        .update({ total_personas: deduplicadas.length, personas_dentro_rango: dentro })
+        .eq('id', campana_id);
+      if (updateError) {
+        return new Response(
+          JSON.stringify({ error: `error actualizando campaña: ${updateError.message}` }),
+          { status: 500, headers: { 'content-type': 'application/json', ...corsHeaders } }
+        );
       }
     }
 
     return new Response(
       JSON.stringify({
         ok: true,
-        stage: 'distancias',
+        stage: 'db-insert',
         totalRows: rows.length,
         personasRaw: personas.length,
         personasDeduplicadas: deduplicadas.length,
         personasDentroRango: dentro,
-        personasFueraRango: fuera,
-        distanciaMax
+        personasFueraRango: fuera
       }),
-      {
-        status: 200,
-        headers: { 'content-type': 'application/json', ...corsHeaders }
-      }
+      { status: 200, headers: { 'content-type': 'application/json', ...corsHeaders } }
     );
   } catch (error) {
     return new Response(
       JSON.stringify({
         ok: false,
-        stage: 'distancias',
+        stage: 'db-insert',
         error: error instanceof Error ? error.message : 'unknown error'
       }),
-      {
-        status: 500,
-        headers: { 'content-type': 'application/json', ...corsHeaders }
-      }
+      { status: 500, headers: { 'content-type': 'application/json', ...corsHeaders } }
     );
   }
 });
