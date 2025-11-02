@@ -1,8 +1,3 @@
 {
-  "imports": {
-    "xlsx": "https://esm.sh/xlsx@0.20.3"
-  },
-  "compilerOptions": {
-    "lib": ["deno.window"]
-  }
+  "imports": {}
 }
