@@ -37,6 +37,7 @@ interface Persona {
   punto_pickit: { nombre: string; direccion: string } | null
   decodificador_devuelto: boolean
   fecha_devolucion: string | null
+  cantidad_decos: number
 }
 
 interface PersonasSections {
@@ -480,6 +481,11 @@ export default function CampaignDetailPage() {
                         <div className="flex-1">
                           <div className="flex items-center gap-2">
                             <p className="font-medium">{persona.apellido_nombre}</p>
+                            {persona.cantidad_decos > 1 && (
+                              <Badge variant="outline" className="text-blue-600 border-blue-200 bg-blue-50 text-xs">
+                                {persona.cantidad_decos} decos
+                              </Badge>
+                            )}
                             {persona.decodificador_devuelto && (
                               <Badge variant="outline" className="text-green-600 border-green-200 bg-green-50">
                                 <Package className="h-3 w-3 mr-1" />
@@ -547,6 +553,11 @@ export default function CampaignDetailPage() {
                         <div className="flex-1">
                           <div className="flex items-center gap-2">
                             <p className="font-medium">{persona.apellido_nombre}</p>
+                            {persona.cantidad_decos > 1 && (
+                              <Badge variant="outline" className="text-blue-600 border-blue-200 bg-blue-50 text-xs">
+                                {persona.cantidad_decos} decos
+                              </Badge>
+                            )}
                             {persona.decodificador_devuelto && (
                               <Badge variant="outline" className="text-green-600 border-green-200 bg-green-50">
                                 <Package className="h-3 w-3 mr-1" />
@@ -617,6 +628,11 @@ export default function CampaignDetailPage() {
                         <div className="flex-1">
                           <div className="flex items-center gap-2">
                             <p className="font-medium">{persona.apellido_nombre}</p>
+                            {persona.cantidad_decos > 1 && (
+                              <Badge variant="outline" className="text-blue-600 border-blue-200 bg-blue-50 text-xs">
+                                {persona.cantidad_decos} decos
+                              </Badge>
+                            )}
                             {persona.decodificador_devuelto && (
                               <Badge variant="outline" className="text-green-600 border-green-200 bg-green-50">
                                 <Package className="h-3 w-3 mr-1" />
@@ -682,6 +698,11 @@ export default function CampaignDetailPage() {
                         <div className="flex-1">
                           <div className="flex items-center gap-2">
                             <p className="font-medium">{persona.apellido_nombre}</p>
+                            {persona.cantidad_decos > 1 && (
+                              <Badge variant="outline" className="text-blue-600 border-blue-200 bg-blue-50 text-xs">
+                                {persona.cantidad_decos} decos
+                              </Badge>
+                            )}
                             {persona.decodificador_devuelto && (
                               <Badge variant="outline" className="text-green-600 border-green-200 bg-green-50">
                                 <Package className="h-3 w-3 mr-1" />
@@ -742,6 +763,11 @@ export default function CampaignDetailPage() {
                         <div className="flex-1">
                           <div className="flex items-center gap-2">
                             <p className="font-medium">{persona.apellido_nombre}</p>
+                            {persona.cantidad_decos > 1 && (
+                              <Badge variant="outline" className="text-blue-600 border-blue-200 bg-blue-50 text-xs">
+                                {persona.cantidad_decos} decos
+                              </Badge>
+                            )}
                             {persona.solicita_retiro_domicilio && (
                               <Badge variant="outline" className="text-purple-600 border-purple-200 bg-purple-50">
                                 Retiro Domicilio
