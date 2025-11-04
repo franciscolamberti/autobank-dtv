@@ -1,0 +1,1 @@
+export const DEFAULT_ERROR_MSG = "Sucedió algo inesperado. Por favor, probá de nuevo.";
