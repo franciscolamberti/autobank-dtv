@@ -8,17 +8,9 @@ import { Activity, ChevronLeft, CheckCircle2, XCircle, Clock, Send, AlertCircle,
 import Link from "next/link"
 import { redirect, useParams } from "next/navigation"
 import { useEffect, useState } from "react"
-import { supabase } from "@/lib/supabase"
+import { supabase, Tables } from "@/lib/supabase"
 import { toast } from "sonner"
 import * as XLSX from 'xlsx'
-
-interface CampaignData {
-  id: string
-  nombre: string
-  distancia_max: number
-  estado: 'activa' | 'pausada' | 'finalizada'
-  created_at: string
-}
 
 interface Persona {
   id: string
@@ -52,7 +44,7 @@ export default function CampaignDetailPage() {
   const params = useParams()
   const id = params?.id as string
 
-  const [campaign, setCampaign] = useState<CampaignData | null>(null)
+  const [campaign, setCampaign] = useState<Partial<Tables<'campanas'>> | null>(null)
   const [personas, setPersonas] = useState<PersonasSections>({
     comprometidos: [],
     inProgress: [],
@@ -418,7 +410,7 @@ export default function CampaignDetailPage() {
                 <div>
                   <h1 className="text-xl font-semibold text-foreground">{campaign.nombre}</h1>
                   <p className="text-sm text-muted-foreground">
-                    Creada el {new Date(campaign.created_at).toLocaleDateString('es-AR')} • {getStatusBadge(campaign.estado)}
+                    Creada el {new Date(campaign.created_at || '').toLocaleDateString('es-AR')} • {getStatusBadge(campaign.estado || '')}
                   </p>
                 </div>
               </div>

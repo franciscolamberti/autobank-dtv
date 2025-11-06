@@ -8,11 +8,11 @@ import { Activity, Clock, Plus } from "lucide-react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { useEffect, useState } from "react"
-import { supabase, type Campana } from "@/lib/supabase"
+import { supabase, Tables } from "@/lib/supabase"
 
 export default function DashboardPage() {
   const router = useRouter()
-  const [campaigns, setCampaigns] = useState<Campana[]>([])
+  const [campaigns, setCampaigns] = useState<Tables<'campanas'>[]>([])
   const [stats, setStats] = useState({ activeCampaigns: 0, totalPending: 0 })
   const [loading, setLoading] = useState(true)
 

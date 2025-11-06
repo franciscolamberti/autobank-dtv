@@ -135,7 +135,7 @@ export default function NewCampaignPage() {
 
       toast({
         title: "Campaña creada exitosamente",
-        description: `${edgeFunctionData.total_personas} personas cargadas, ${edgeFunctionData.personas_dentro_rango} dentro del rango`
+        description: `${edgeFunctionData.personasDeduplicadas} personas cargadas, ${edgeFunctionData.personasDentroRango} dentro del rango`
       })
 
       // redirigir a detalle de campaña
