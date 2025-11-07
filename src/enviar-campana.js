@@ -259,6 +259,7 @@ async function enviarKapsoWorkflow(
       .json()
       .catch(() => ({ error: { message: response.statusText } }));
     const errorCode = errorData.error?.code;
+    const errorMessage = errorData?.error?.message || response.statusText;
 
     // Capturar errores Meta según PRD
     // code 1357045: recipient not found
@@ -269,7 +270,10 @@ async function enviarKapsoWorkflow(
       await actualizarSupabase(
         env,
         "personas_contactar",
-        { tiene_whatsapp: false },
+        {
+          tiene_whatsapp: false,
+          error_envio_kapso: `Error ${errorCode}: ${errorMessage}`,
+        },
         new URLSearchParams({ id: `eq.${persona.id}` })
       );
     }
@@ -279,7 +283,19 @@ async function enviarKapsoWorkflow(
     );
   }
 
-  return await response.json();
+  const result = await response.json();
+  const trackingId = result.data?.tracking_id;
+
+  if (trackingId && !DRY_RUN) {
+    await actualizarSupabase(
+      env,
+      "personas_contactar",
+      { kapso_tracking_id: trackingId },
+      new URLSearchParams({ id: `eq.${persona.id}` })
+    );
+  }
+
+  return result;
 }
 
 /**
