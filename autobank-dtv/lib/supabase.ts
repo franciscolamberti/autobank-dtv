@@ -151,6 +151,7 @@ export type Database = {
           direccion_completa: string | null
           distancia_metros: number | null
           dni: string | null
+          email: string | null
           error_envio_kapso: string | null
           estado_cliente_original: string | null
           estado_contacto: Database["public"]["Enums"]["estado_contacto_enum"]
@@ -194,6 +195,7 @@ export type Database = {
           direccion_completa?: string | null
           distancia_metros?: number | null
           dni?: string | null
+          email?: string | null
           error_envio_kapso?: string | null
           estado_cliente_original?: string | null
           estado_contacto?: Database["public"]["Enums"]["estado_contacto_enum"]
@@ -237,6 +239,7 @@ export type Database = {
           direccion_completa?: string | null
           distancia_metros?: number | null
           dni?: string | null
+          email?: string | null
           error_envio_kapso?: string | null
           estado_cliente_original?: string | null
           estado_contacto?: Database["public"]["Enums"]["estado_contacto_enum"]
@@ -290,6 +293,7 @@ export type Database = {
         Row: {
           created_at: string | null
           direccion: string
+          external_id: number | null
           id: string
           lat: number
           lon: number
@@ -298,6 +302,7 @@ export type Database = {
         Insert: {
           created_at?: string | null
           direccion: string
+          external_id?: number | null
           id?: string
           lat: number
           lon: number
@@ -306,6 +311,7 @@ export type Database = {
         Update: {
           created_at?: string | null
           direccion?: string
+          external_id?: number | null
           id?: string
           lat?: number
           lon?: number
