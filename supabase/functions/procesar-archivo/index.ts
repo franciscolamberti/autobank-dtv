@@ -221,7 +221,8 @@ Deno.serve(async (req) => {
         localidad: String(row[36] || '').trim(),
         provincia: String(row[37] || '').trim(),
         lat,
-        lon
+        lon,
+        email: String(row[42] || '').trim(),
       });
     }
 
@@ -367,7 +368,8 @@ Deno.serve(async (req) => {
           tiene_whatsapp: tieneWhatsapp,
           estado_contacto: 'pendiente',
           razon_creacion: null,
-          estado_cliente_original: null
+          estado_cliente_original: null,
+          email: p.email || null,
         };
 
         personasParaInsertar.push(registro);
