@@ -1,7 +1,6 @@
 # dependencies
 node_modules/
 .pnpm-store/
-package-lock.json
 
 # environment variables
 .env
