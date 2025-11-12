@@ -27,6 +27,7 @@ import { useEffect, useState } from "react";
 import { supabase, Tables } from "@/lib/supabase";
 import { toast } from "sonner";
 import * as XLSX from "xlsx";
+import { PersonaList } from "@/components/persona-list";
 
 type PersonaConPickit = Tables<"personas_contactar"> & {
   punto_pickit?: Tables<"puntos_pickit">;
@@ -56,6 +57,14 @@ export default function CampaignDetailPage() {
   });
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
+  const [puntosPickit, setPuntosPickit] = useState<
+    Array<
+      Pick<
+        Tables<"puntos_pickit">,
+        "id" | "nombre" | "external_id" | "direccion"
+      >
+    >
+  >([]);
 
   // Redirect if someone tries to access /campanas/nueva through the dynamic route
   if (id === "nueva") {
@@ -95,6 +104,20 @@ export default function CampaignDetailPage() {
     };
   }, [id]);
 
+  // Fetch Pickit points once on mount
+  useEffect(() => {
+    const loadPuntosPickit = async () => {
+      const { data, error } = await supabase
+        .from("puntos_pickit")
+        .select("id, nombre, external_id, direccion");
+      if (error) {
+        console.error("Error loading puntos_pickit:", error);
+        return;
+      }
+      setPuntosPickit(data || []);
+    };
+    loadPuntosPickit();
+  }, []);
   const loadCampaignData = async () => {
     try {
       // Load campaign
@@ -111,7 +134,7 @@ export default function CampaignDetailPage() {
       const { data: personasData, error: personasError } = await supabase
         .from("personas_contactar")
         .select(
-          "id, apellido_nombre, dni, telefono_principal, nro_cliente, nro_wo, nros_cliente, nros_wo, cantidad_decos, distancia_metros, estado_contacto, dentro_rango, fuera_de_rango, tiene_whatsapp, fecha_envio_whatsapp, fecha_respuesta, respuesta_texto, fecha_compromiso, motivo_negativo, solicita_retiro_domicilio, decodificador_devuelto, fecha_devolucion, direccion_completa, cp, localidad, provincia, punto_pickit:puntos_pickit(nombre, direccion), error_envio_kapso"
+          "id, apellido_nombre, dni, telefono_principal, nro_cliente, nro_wo, nros_cliente, nros_wo, cantidad_decos, distancia_metros, estado_contacto, dentro_rango, fuera_de_rango, tiene_whatsapp, fecha_envio_whatsapp, fecha_respuesta, respuesta_texto, fecha_compromiso, motivo_negativo, solicita_retiro_domicilio, decodificador_devuelto, fecha_devolucion, direccion_completa, cp, localidad, provincia, punto_pickit:puntos_pickit(id, external_id, nombre, direccion), error_envio_kapso"
         )
         .eq("campana_id", id);
 
@@ -321,7 +344,7 @@ export default function CampaignDetailPage() {
         .select(
           `
           *,
-          punto_pickit:puntos_pickit(nombre, direccion)
+          punto_pickit:puntos_pickit(id, external_id, nombre, direccion)
         `
         )
         .eq("campana_id", id);
@@ -547,8 +570,10 @@ export default function CampaignDetailPage() {
             </CardHeader>
             <CardContent>
               {personas.comprometidos.length > 0 ? (
-                <div className="space-y-2">
-                  {personas.comprometidos.map((persona) => (
+                <PersonaList
+                  personas={personas.comprometidos}
+                  puntosPickit={puntosPickit}
+                  renderItem={(persona) => (
                     <div
                       key={persona.id}
                       className="flex items-center justify-between p-3 border border-border rounded-lg hover:bg-muted/50 bg-green-50/50"
@@ -616,8 +641,8 @@ export default function CampaignDetailPage() {
                         )}
                       </div>
                     </div>
-                  ))}
-                </div>
+                  )}
+                />
               ) : (
                 <p className="text-sm text-muted-foreground text-center py-4">
                   No hay compromisos aún
@@ -655,8 +680,10 @@ export default function CampaignDetailPage() {
             </CardHeader>
             <CardContent>
               {personas.inProgress.length > 0 ? (
-                <div className="space-y-2">
-                  {personas.inProgress.map((persona) => (
+                <PersonaList
+                  personas={personas.inProgress}
+                  puntosPickit={puntosPickit}
+                  renderItem={(persona) => (
                     <div
                       key={persona.id}
                       className="flex items-center justify-between p-3 border border-border rounded-lg hover:bg-muted/50"
@@ -724,8 +751,8 @@ export default function CampaignDetailPage() {
                         )}
                       </div>
                     </div>
-                  ))}
-                </div>
+                  )}
+                />
               ) : (
                 <p className="text-sm text-muted-foreground text-center py-4">
                   No hay personas en progreso
@@ -764,8 +791,10 @@ export default function CampaignDetailPage() {
             </CardHeader>
             <CardContent>
               {personas.fueraDeRango.length > 0 ? (
-                <div className="space-y-2">
-                  {personas.fueraDeRango.map((persona) => (
+                <PersonaList
+                  personas={personas.fueraDeRango}
+                  puntosPickit={puntosPickit}
+                  renderItem={(persona) => (
                     <div
                       key={persona.id}
                       className="flex items-center justify-between p-3 border border-border rounded-lg hover:bg-muted/50"
@@ -827,8 +856,8 @@ export default function CampaignDetailPage() {
                         </p>
                       </div>
                     </div>
-                  ))}
-                </div>
+                  )}
+                />
               ) : (
                 <p className="text-sm text-muted-foreground text-center py-4">
                   Todas las personas están dentro del rango
@@ -866,8 +895,10 @@ export default function CampaignDetailPage() {
             </CardHeader>
             <CardContent>
               {personas.sinWhatsapp.length > 0 ? (
-                <div className="space-y-2">
-                  {personas.sinWhatsapp.map((persona) => (
+                <PersonaList
+                  personas={personas.sinWhatsapp}
+                  puntosPickit={puntosPickit}
+                  renderItem={(persona) => (
                     <div
                       key={persona.id}
                       className="flex items-center justify-between p-3 border border-border rounded-lg hover:bg-muted/50 bg-yellow-50/50"
@@ -924,8 +955,8 @@ export default function CampaignDetailPage() {
                         </Badge>
                       </div>
                     </div>
-                  ))}
-                </div>
+                  )}
+                />
               ) : (
                 <p className="text-sm text-muted-foreground text-center py-4">
                   Todos los números tienen WhatsApp válido
@@ -967,8 +998,10 @@ export default function CampaignDetailPage() {
             </CardHeader>
             <CardContent>
               {personas.atencionEspecial.length > 0 ? (
-                <div className="space-y-2">
-                  {personas.atencionEspecial.map((persona) => (
+                <PersonaList
+                  personas={personas.atencionEspecial}
+                  puntosPickit={puntosPickit}
+                  renderItem={(persona) => (
                     <div
                       key={persona.id}
                       className="flex items-center justify-between p-3 border border-border rounded-lg hover:bg-muted/50 bg-purple-50/50"
@@ -1048,8 +1081,8 @@ export default function CampaignDetailPage() {
                         )}
                       </div>
                     </div>
-                  ))}
-                </div>
+                  )}
+                />
               ) : (
                 <p className="text-sm text-muted-foreground text-center py-4">
                   No hay casos que requieran atención especial
