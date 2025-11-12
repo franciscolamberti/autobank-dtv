@@ -146,8 +146,6 @@ export default function NewCampaignPage() {
           },
         });
 
-      console.log(JSON.stringify({ edgeFunctionData, edgeFunctionError }));
-
       if (edgeFunctionError) {
         const res = edgeFunctionError.context as Response | undefined;
         let serverMessage = edgeFunctionError.message || "Error desconocido";
