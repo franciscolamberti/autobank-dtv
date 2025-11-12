@@ -812,39 +812,39 @@ export default {
     }
 
     // Recordatorios + contacto inicial a las 09:00 AR
-    if (horaArgentina === 9) {
-      try {
-        // 1. Procesar recordatorios (09:00 AR = 12:00 UTC)
-        console.log("Procesando recordarios");
-        const recordatoriosLog = await procesarRecordatorios(env);
-        console.log("Recordatorios:", recordatoriosLog.resultado);
+    // if (horaArgentina === 9) {
+    //   try {
+    //     // 1. Procesar recordatorios (09:00 AR = 12:00 UTC)
+    //     console.log("Procesando recordarios");
+    //     const recordatoriosLog = await procesarRecordatorios(env);
+    //     console.log("Recordatorios:", recordatoriosLog.resultado);
 
-        // 2. Procesar contacto inicial (inicio ventana 1 AR)
-        console.log("Procesando contacto inicial...");
-        const campanas = await consultarSupabase(env, {
-          table: "campanas",
-          select: "id",
-          params: new URLSearchParams({ estado: "eq.activa" }),
-        });
+    //     // 2. Procesar contacto inicial (inicio ventana 1 AR)
+    //     console.log("Procesando contacto inicial...");
+    //     const campanas = await consultarSupabase(env, {
+    //       table: "campanas",
+    //       select: "id",
+    //       params: new URLSearchParams({ estado: "eq.activa" }),
+    //     });
 
-        console.log(`Encontradas ${campanas.length} campañas activas`);
+    //     console.log(`Encontradas ${campanas.length} campañas activas`);
 
-        const resultados = [];
-        for (const campana of campanas) {
-          const resultado = await procesarCampana(env, campana.id, false);
-          resultados.push(resultado);
-          console.log(`Campaña ${campana.id} procesada:`, resultado.resultado);
-        }
+    //     const resultados = [];
+    //     for (const campana of campanas) {
+    //       const resultado = await procesarCampana(env, campana.id, false);
+    //       resultados.push(resultado);
+    //       console.log(`Campaña ${campana.id} procesada:`, resultado.resultado);
+    //     }
 
-        console.log("Cron completado:", {
-          total_campanas: campanas.length,
-          resultados: resultados.map((r) => ({ resultado: r.resultado })),
-        });
-      } catch (err) {
-        console.error("error en cron:", error);
-      }
-    } else {
-      console.log("Fuera de ventanas programadas; no hay tareas.");
-    }
+    //     console.log("Cron completado:", {
+    //       total_campanas: campanas.length,
+    //       resultados: resultados.map((r) => ({ resultado: r.resultado })),
+    //     });
+    //   } catch (err) {
+    //     console.error("error en cron:", error);
+    //   }
+    // } else {
+    //   console.log("Fuera de ventanas programadas; no hay tareas.");
+    // }
   },
 };

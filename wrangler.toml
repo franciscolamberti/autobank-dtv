@@ -4,7 +4,7 @@ compatibility_date = "2024-01-01"
 
 [triggers]
 # cron diario a las 12:00 utc (09:00 argentina sin dst) y 20:00 AR (23:00 UTC)
-crons = ["0 12 * * *", "0 23 * * *"]
+crons = ["0 23 * * *"]
 
 [observability]
 enabled = true
