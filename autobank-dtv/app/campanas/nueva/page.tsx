@@ -1,162 +1,208 @@
-"use client"
+"use client";
 
-import type React from "react"
+import type React from "react";
 
-import { useState } from "react"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Slider } from "@/components/ui/slider"
-import { Alert, AlertDescription } from "@/components/ui/alert"
-import { Badge } from "@/components/ui/badge"
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
-import { Activity, AlertCircle, ChevronDown, ChevronLeft, Clock, FileSpreadsheet, Upload } from "lucide-react"
-import Link from "next/link"
-import { useRouter } from "next/navigation"
-import { supabase } from "@/lib/supabase"
-import { useToast } from "@/hooks/use-toast"
+import { useState } from "react";
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Slider } from "@/components/ui/slider";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Badge } from "@/components/ui/badge";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
+import {
+  Activity,
+  AlertCircle,
+  ChevronDown,
+  ChevronLeft,
+  Clock,
+  FileSpreadsheet,
+  Upload,
+} from "lucide-react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { supabase } from "@/lib/supabase";
+import { useToast } from "@/hooks/use-toast";
 
 export default function NewCampaignPage() {
-  const router = useRouter()
-  const { toast } = useToast()
-  const [currentStep, setCurrentStep] = useState(1)
-  const [isProcessing, setIsProcessing] = useState(false)
-  const [processingStatus, setProcessingStatus] = useState("")
+  const router = useRouter();
+  const { toast } = useToast();
+  const [currentStep, setCurrentStep] = useState(1);
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [processingStatus, setProcessingStatus] = useState("");
 
   // Form state según PRD
-  const [campaignName, setCampaignName] = useState("")
-  const [maxDistance, setMaxDistance] = useState([2000])
-  const [fechaFinContactacion, setFechaFinContactacion] = useState("")
-  const [horarioCorteDiario, setHorarioCorteDiario] = useState("20:00")
+  const [campaignName, setCampaignName] = useState("");
+  const [maxDistance, setMaxDistance] = useState([2000]);
+  const [fechaFinContactacion, setFechaFinContactacion] = useState("");
+  const [horarioCorteDiario, setHorarioCorteDiario] = useState("20:00");
   // Ventanas Lunes-Viernes
-  const [ventana1Inicio, setVentana1Inicio] = useState("12:00")
-  const [ventana1Fin, setVentana1Fin] = useState("15:00")
-  const [ventana2Inicio, setVentana2Inicio] = useState("18:00")
-  const [ventana2Fin, setVentana2Fin] = useState("20:30")
+  const [ventana1Inicio, setVentana1Inicio] = useState("12:00");
+  const [ventana1Fin, setVentana1Fin] = useState("15:00");
+  const [ventana2Inicio, setVentana2Inicio] = useState("18:00");
+  const [ventana2Fin, setVentana2Fin] = useState("20:30");
   // Ventana Sábado
-  const [sabadoInicio, setSabadoInicio] = useState("10:00")
-  const [sabadoFin, setSabadoFin] = useState("13:00")
-  const [contactarDomingo, setContactarDomingo] = useState(false)
-  const [timezone, setTimezone] = useState("America/Argentina/Buenos_Aires")
+  const [sabadoInicio, setSabadoInicio] = useState("10:00");
+  const [sabadoFin, setSabadoFin] = useState("13:00");
+  const [contactarDomingo, setContactarDomingo] = useState(false);
+  const [timezone, setTimezone] = useState("America/Argentina/Buenos_Aires");
   // Kapso config
-  const [kapsoWorkflowId, setKapsoWorkflowId] = useState("")
-  const [kapsoWorkflowIdRecordatorio, setKapsoWorkflowIdRecordatorio] = useState("")
-  const [kapsoPhoneNumberId, setKapsoPhoneNumberId] = useState("")
-  const [selectedFile, setSelectedFile] = useState<File | null>(null)
+  const [kapsoWorkflowId, setKapsoWorkflowId] = useState("");
+  const [kapsoWorkflowIdRecordatorio, setKapsoWorkflowIdRecordatorio] =
+    useState("");
+  const [kapsoPhoneNumberId, setKapsoPhoneNumberId] = useState("");
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
+    const file = e.target.files?.[0];
     if (file) {
       // validar tamaño (50MB max)
       if (file.size > 50 * 1024 * 1024) {
         toast({
           title: "Archivo muy grande",
           description: "El archivo no puede superar los 50MB",
-          variant: "destructive"
-        })
-        return
+          variant: "destructive",
+        });
+        return;
       }
-      setSelectedFile(file)
+      setSelectedFile(file);
     }
-  }
+  };
 
   const handleCreateCampaign = async () => {
-    if (!selectedFile) return
-    
-    setIsProcessing(true)
-    setProcessingStatus("Creando campaña...")
+    if (!selectedFile) return;
+
+    setIsProcessing(true);
+    setProcessingStatus("Creando campaña...");
 
     try {
       // 1. crear registro de campaña con todos los campos PRD
       const { data: campana, error: campanaError } = await supabase
-        .from('campanas')
+        .from("campanas")
         .insert({
           nombre: campaignName,
           distancia_max: maxDistance[0],
           fecha_fin_contactacion: fechaFinContactacion || null,
-          horario_corte_diario: horarioCorteDiario || '20:00:00',
-          horario_ventana_1_inicio: ventana1Inicio || '12:00:00',
-          horario_ventana_1_fin: ventana1Fin || '15:00:00',
-          horario_ventana_2_inicio: ventana2Inicio || '18:00:00',
-          horario_ventana_2_fin: ventana2Fin || '20:30:00',
-          horario_sabado_inicio: sabadoInicio || '10:00:00',
-          horario_sabado_fin: sabadoFin || '13:00:00',
+          horario_corte_diario: horarioCorteDiario || "20:00:00",
+          horario_ventana_1_inicio: ventana1Inicio || "12:00:00",
+          horario_ventana_1_fin: ventana1Fin || "15:00:00",
+          horario_ventana_2_inicio: ventana2Inicio || "18:00:00",
+          horario_ventana_2_fin: ventana2Fin || "20:30:00",
+          horario_sabado_inicio: sabadoInicio || "10:00:00",
+          horario_sabado_fin: sabadoFin || "13:00:00",
           contactar_domingo: contactarDomingo,
-          timezone: timezone || 'America/Argentina/Buenos_Aires',
+          timezone: timezone || "America/Argentina/Buenos_Aires",
           kapso_workflow_id: kapsoWorkflowId || null,
           kapso_workflow_id_recordatorio: kapsoWorkflowIdRecordatorio || null,
           kapso_phone_number_id: kapsoPhoneNumberId || null,
-          archivo_url: '', // se actualizará después de subir archivo
-          estado: 'activa'
+          archivo_url: "", // se actualizará después de subir archivo
+          estado: "activa",
         })
         .select()
-        .single()
+        .single();
 
       if (campanaError) {
-        throw new Error(`Error creando campaña: ${campanaError.message}`)
+        throw new Error(`Error creando campaña: ${campanaError.message}`);
       }
 
-      setProcessingStatus("Subiendo archivo...")
+      setProcessingStatus("Subiendo archivo...");
 
       // 2. subir archivo a storage
-      const fileName = `${campana.id}/${selectedFile.name}`
+      const fileName = `${campana.id}/${selectedFile.name}`;
       const { error: uploadError } = await supabase.storage
-        .from('archivos-dtv')
-        .upload(fileName, selectedFile)
+        .from("archivos-dtv")
+        .upload(fileName, selectedFile);
 
       if (uploadError) {
-        throw new Error(`Error subiendo archivo: ${uploadError.message}`)
+        throw new Error(`Error subiendo archivo: ${uploadError.message}`);
       }
 
       // 3. actualizar url del archivo
       await supabase
-        .from('campanas')
+        .from("campanas")
         .update({ archivo_url: fileName })
-        .eq('id', campana.id)
+        .eq("id", campana.id);
 
-      setProcessingStatus("Procesando archivo Excel...")
+      setProcessingStatus("Procesando archivo Excel...");
 
       // 4. llamar edge function para procesar archivo
-      const { data: edgeFunctionData, error: edgeFunctionError } = await supabase.functions.invoke(
-        'procesar-archivo',
-        {
+      const { data: edgeFunctionData, error: edgeFunctionError } =
+        await supabase.functions.invoke("procesar-archivo", {
           body: {
             campana_id: campana.id,
-            bucket: 'archivos-dtv',
-            path: fileName
-          }
-        }
-      )
+            bucket: "archivos-dtv",
+            path: fileName,
+          },
+        });
+
+      console.log(JSON.stringify({ edgeFunctionData, edgeFunctionError }));
 
       if (edgeFunctionError) {
-        throw new Error(`Error procesando archivo: ${edgeFunctionError.message}`)
+        const res = edgeFunctionError.context as Response | undefined;
+        let serverMessage = edgeFunctionError.message || "Error desconocido";
+
+        try {
+          if (res) {
+            const ct = res.headers.get("content-type") || "";
+            if (ct.includes("application/json")) {
+              const json = await res.json();
+              serverMessage = json?.error || json?.message || serverMessage;
+            } else {
+              serverMessage = (await res.text()) || serverMessage;
+            }
+          }
+        } catch (_) {
+          // ignore parsing errors; fall back to generic message
+        }
+
+        const status = res?.status ?? edgeFunctionError.status ?? null;
+
+        if (status === 400) {
+          toast({
+            title: "Archivo inválido",
+            description: serverMessage,
+            variant: "destructive",
+          });
+        }
+
+        throw new Error(serverMessage);
       }
 
       toast({
         title: "Campaña creada exitosamente",
-        description: `${edgeFunctionData.personasDeduplicadas} personas cargadas, ${edgeFunctionData.personasDentroRango} dentro del rango`
-      })
+        description: `${edgeFunctionData.personasDeduplicadas} personas cargadas, ${edgeFunctionData.personasDentroRango} dentro del rango`,
+      });
 
       // redirigir a detalle de campaña
-      router.push(`/campanas/${campana.id}`)
-
+      router.push(`/campanas/${campana.id}`);
     } catch (error) {
-      console.error('Error:', error)
+      console.error("Error:", error);
       toast({
         title: "Error creando campaña",
-        description: error instanceof Error ? error.message : "Error desconocido",
-        variant: "destructive"
-      })
-      setIsProcessing(false)
+        description:
+          error instanceof Error ? error.message : "Error desconocido",
+        variant: "destructive",
+      });
+      setIsProcessing(false);
     }
-  }
+  };
 
   const steps = [
     { number: 1, title: "Configuración" },
     { number: 2, title: "Cargar Archivo" },
     { number: 3, title: "Confirmar" },
-  ]
+  ];
 
   return (
     <div className="min-h-screen bg-background">
@@ -174,8 +220,12 @@ export default function NewCampaignPage() {
                 <Activity className="h-6 w-6 text-white" />
               </div>
               <div>
-                <h1 className="text-xl font-semibold text-foreground">Nueva Campaña de Recupero</h1>
-                <p className="text-sm text-muted-foreground">Configurá y procesá tu campaña DTV</p>
+                <h1 className="text-xl font-semibold text-foreground">
+                  Nueva Campaña de Recupero
+                </h1>
+                <p className="text-sm text-muted-foreground">
+                  Configurá y procesá tu campaña DTV
+                </p>
               </div>
             </div>
           </div>
@@ -200,7 +250,9 @@ export default function NewCampaignPage() {
                   </div>
                   <span
                     className={`mt-2 text-sm font-medium ${
-                      currentStep >= step.number ? "text-foreground" : "text-muted-foreground"
+                      currentStep >= step.number
+                        ? "text-foreground"
+                        : "text-muted-foreground"
                     }`}
                   >
                     {step.title}
@@ -224,7 +276,9 @@ export default function NewCampaignPage() {
             <Card>
               <CardHeader>
                 <CardTitle>Configuración de Campaña</CardTitle>
-                <CardDescription>Definí los parámetros básicos de tu campaña de recupero</CardDescription>
+                <CardDescription>
+                  Definí los parámetros básicos de tu campaña de recupero
+                </CardDescription>
               </CardHeader>
               <CardContent className="space-y-6">
                 <div className="space-y-2">
@@ -257,7 +311,9 @@ export default function NewCampaignPage() {
                       </Badge>
                       <span className="text-muted-foreground">5000m</span>
                     </div>
-                    <p className="text-sm text-muted-foreground">Clientes dentro de esta distancia serán contactados</p>
+                    <p className="text-sm text-muted-foreground">
+                      Clientes dentro de esta distancia serán contactados
+                    </p>
                   </div>
                 </div>
 
@@ -270,14 +326,18 @@ export default function NewCampaignPage() {
                     onChange={(e) => setFechaFinContactacion(e.target.value)}
                     required
                   />
-                  <p className="text-sm text-muted-foreground">Plazo máximo para contactar personas</p>
+                  <p className="text-sm text-muted-foreground">
+                    Plazo máximo para contactar personas
+                  </p>
                 </div>
 
                 <div className="space-y-4">
                   <Label>Ventanas Horarias - Lunes a Viernes</Label>
                   <div className="space-y-3">
                     <div>
-                      <Label className="text-sm text-muted-foreground mb-2 block">Ventana 1</Label>
+                      <Label className="text-sm text-muted-foreground mb-2 block">
+                        Ventana 1
+                      </Label>
                       <div className="grid grid-cols-2 gap-4">
                         <Input
                           type="time"
@@ -292,7 +352,9 @@ export default function NewCampaignPage() {
                       </div>
                     </div>
                     <div>
-                      <Label className="text-sm text-muted-foreground mb-2 block">Ventana 2</Label>
+                      <Label className="text-sm text-muted-foreground mb-2 block">
+                        Ventana 2
+                      </Label>
                       <div className="grid grid-cols-2 gap-4">
                         <Input
                           type="time"
@@ -333,7 +395,10 @@ export default function NewCampaignPage() {
                     value={horarioCorteDiario}
                     onChange={(e) => setHorarioCorteDiario(e.target.value)}
                   />
-                  <p className="text-sm text-muted-foreground">Hora de generación del archivo diario Pickit (default: 20:00)</p>
+                  <p className="text-sm text-muted-foreground">
+                    Hora de generación del archivo diario Pickit (default:
+                    20:00)
+                  </p>
                 </div>
 
                 <div className="flex items-center space-x-2">
@@ -344,7 +409,9 @@ export default function NewCampaignPage() {
                     onChange={(e) => setContactarDomingo(e.target.checked)}
                     className="h-4 w-4"
                   />
-                  <Label htmlFor="contactar-domingo">Contactar también los domingos</Label>
+                  <Label htmlFor="contactar-domingo">
+                    Contactar también los domingos
+                  </Label>
                 </div>
 
                 <Collapsible>
@@ -356,7 +423,9 @@ export default function NewCampaignPage() {
                   </CollapsibleTrigger>
                   <CollapsibleContent className="space-y-4 pt-4">
                     <div className="space-y-2">
-                      <Label htmlFor="kapso-workflow">Kapso Workflow ID (Principal)</Label>
+                      <Label htmlFor="kapso-workflow">
+                        Kapso Workflow ID (Principal)
+                      </Label>
                       <Input
                         id="kapso-workflow"
                         placeholder="UUID del workflow principal"
@@ -365,12 +434,16 @@ export default function NewCampaignPage() {
                       />
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="kapso-workflow-recordatorio">Kapso Workflow ID (Recordatorio)</Label>
+                      <Label htmlFor="kapso-workflow-recordatorio">
+                        Kapso Workflow ID (Recordatorio)
+                      </Label>
                       <Input
                         id="kapso-workflow-recordatorio"
                         placeholder="UUID del workflow de recordatorio"
                         value={kapsoWorkflowIdRecordatorio}
-                        onChange={(e) => setKapsoWorkflowIdRecordatorio(e.target.value)}
+                        onChange={(e) =>
+                          setKapsoWorkflowIdRecordatorio(e.target.value)
+                        }
                       />
                     </div>
                     <div className="space-y-2">
@@ -383,7 +456,8 @@ export default function NewCampaignPage() {
                       />
                     </div>
                     <p className="text-sm text-muted-foreground">
-                      Si no se completa, se usarán los valores por defecto del sistema
+                      Si no se completa, se usarán los valores por defecto del
+                      sistema
                     </p>
                   </CollapsibleContent>
                 </Collapsible>
@@ -408,7 +482,9 @@ export default function NewCampaignPage() {
             <Card>
               <CardHeader>
                 <CardTitle>Cargar Archivo DTV</CardTitle>
-                <CardDescription>Subí el archivo Excel con los datos de clientes a contactar</CardDescription>
+                <CardDescription>
+                  Subí el archivo Excel con los datos de clientes a contactar
+                </CardDescription>
               </CardHeader>
               <CardContent className="space-y-6">
                 {!selectedFile ? (
@@ -416,9 +492,12 @@ export default function NewCampaignPage() {
                     <label htmlFor="file-upload" className="cursor-pointer">
                       <Upload className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
                       <p className="text-foreground font-medium mb-2">
-                        Arrastrá el archivo Excel de DTV o hacé click para seleccionar
+                        Arrastrá el archivo Excel de DTV o hacé click para
+                        seleccionar
                       </p>
-                      <p className="text-sm text-muted-foreground">Solo archivos .xlsx o .xls (máx. 50MB)</p>
+                      <p className="text-sm text-muted-foreground">
+                        Solo archivos .xlsx o .xls (máx. 50MB)
+                      </p>
                       <input
                         id="file-upload"
                         type="file"
@@ -435,12 +514,17 @@ export default function NewCampaignPage() {
                         <FileSpreadsheet className="h-6 w-6 text-green-600" />
                       </div>
                       <div className="flex-1">
-                        <p className="font-medium text-foreground">{selectedFile.name}</p>
+                        <p className="font-medium text-foreground">
+                          {selectedFile.name}
+                        </p>
                         <p className="text-sm text-muted-foreground">
                           {(selectedFile.size / 1024 / 1024).toFixed(2)} MB
                         </p>
                       </div>
-                      <Button variant="outline" onClick={() => setSelectedFile(null)}>
+                      <Button
+                        variant="outline"
+                        onClick={() => setSelectedFile(null)}
+                      >
                         Cambiar archivo
                       </Button>
                     </div>
@@ -450,7 +534,10 @@ export default function NewCampaignPage() {
                 <Alert>
                   <AlertCircle className="h-4 w-4" />
                   <AlertDescription>
-                    El archivo debe incluir: <strong>teléfono, nombre, ubicación (lat/lon), nro cliente</strong>
+                    El archivo debe incluir:{" "}
+                    <strong>
+                      teléfono, nombre, ubicación (lat/lon), nro cliente
+                    </strong>
                   </AlertDescription>
                 </Alert>
               </CardContent>
@@ -477,50 +564,92 @@ export default function NewCampaignPage() {
             <Card>
               <CardHeader>
                 <CardTitle>Confirmar y Procesar</CardTitle>
-                <CardDescription>Revisá la configuración antes de crear la campaña</CardDescription>
+                <CardDescription>
+                  Revisá la configuración antes de crear la campaña
+                </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="space-y-3">
                   <div className="flex justify-between py-2 border-b border-border">
-                    <span className="text-muted-foreground">Nombre de campaña:</span>
-                    <span className="font-medium text-foreground">{campaignName}</span>
+                    <span className="text-muted-foreground">
+                      Nombre de campaña:
+                    </span>
+                    <span className="font-medium text-foreground">
+                      {campaignName}
+                    </span>
                   </div>
                   <div className="flex justify-between py-2 border-b border-border">
-                    <span className="text-muted-foreground">Distancia máxima:</span>
-                    <span className="font-medium text-foreground">{maxDistance[0]}m</span>
+                    <span className="text-muted-foreground">
+                      Distancia máxima:
+                    </span>
+                    <span className="font-medium text-foreground">
+                      {maxDistance[0]}m
+                    </span>
                   </div>
                   <div className="flex justify-between py-2 border-b border-border">
-                    <span className="text-muted-foreground">Fecha fin de contactación:</span>
-                    <span className="font-medium text-foreground">{fechaFinContactacion || 'No definida'}</span>
+                    <span className="text-muted-foreground">
+                      Fecha fin de contactación:
+                    </span>
+                    <span className="font-medium text-foreground">
+                      {fechaFinContactacion || "No definida"}
+                    </span>
                   </div>
                   <div className="flex justify-between py-2 border-b border-border">
-                    <span className="text-muted-foreground">Ventana 1 (Lun-Vie):</span>
-                    <span className="font-medium text-foreground">{ventana1Inicio} - {ventana1Fin}</span>
+                    <span className="text-muted-foreground">
+                      Ventana 1 (Lun-Vie):
+                    </span>
+                    <span className="font-medium text-foreground">
+                      {ventana1Inicio} - {ventana1Fin}
+                    </span>
                   </div>
                   <div className="flex justify-between py-2 border-b border-border">
-                    <span className="text-muted-foreground">Ventana 2 (Lun-Vie):</span>
-                    <span className="font-medium text-foreground">{ventana2Inicio} - {ventana2Fin}</span>
+                    <span className="text-muted-foreground">
+                      Ventana 2 (Lun-Vie):
+                    </span>
+                    <span className="font-medium text-foreground">
+                      {ventana2Inicio} - {ventana2Fin}
+                    </span>
                   </div>
                   <div className="flex justify-between py-2 border-b border-border">
-                    <span className="text-muted-foreground">Ventana Sábado:</span>
-                    <span className="font-medium text-foreground">{sabadoInicio} - {sabadoFin}</span>
+                    <span className="text-muted-foreground">
+                      Ventana Sábado:
+                    </span>
+                    <span className="font-medium text-foreground">
+                      {sabadoInicio} - {sabadoFin}
+                    </span>
                   </div>
                   <div className="flex justify-between py-2 border-b border-border">
-                    <span className="text-muted-foreground">Contactar domingos:</span>
-                    <span className="font-medium text-foreground">{contactarDomingo ? 'Sí' : 'No'}</span>
+                    <span className="text-muted-foreground">
+                      Contactar domingos:
+                    </span>
+                    <span className="font-medium text-foreground">
+                      {contactarDomingo ? "Sí" : "No"}
+                    </span>
                   </div>
                   <div className="flex justify-between py-2 border-b border-border">
-                    <span className="text-muted-foreground">Horario de corte diario:</span>
-                    <span className="font-medium text-foreground">{horarioCorteDiario}</span>
+                    <span className="text-muted-foreground">
+                      Horario de corte diario:
+                    </span>
+                    <span className="font-medium text-foreground">
+                      {horarioCorteDiario}
+                    </span>
                   </div>
                   <div className="flex justify-between py-2 border-b border-border">
-                    <span className="text-muted-foreground">Archivo seleccionado:</span>
-                    <span className="font-medium text-foreground">{selectedFile?.name}</span>
+                    <span className="text-muted-foreground">
+                      Archivo seleccionado:
+                    </span>
+                    <span className="font-medium text-foreground">
+                      {selectedFile?.name}
+                    </span>
                   </div>
                   {kapsoWorkflowId && (
                     <div className="flex justify-between py-2 border-b border-border">
-                      <span className="text-muted-foreground">Kapso Workflow ID:</span>
-                      <span className="font-medium text-foreground font-mono text-sm">{kapsoWorkflowId}</span>
+                      <span className="text-muted-foreground">
+                        Kapso Workflow ID:
+                      </span>
+                      <span className="font-medium text-foreground font-mono text-sm">
+                        {kapsoWorkflowId}
+                      </span>
                     </div>
                   )}
                 </div>
@@ -528,7 +657,8 @@ export default function NewCampaignPage() {
                 <Alert className="bg-yellow-500/10 border-yellow-500/20">
                   <AlertCircle className="h-4 w-4 text-yellow-600" />
                   <AlertDescription className="text-yellow-800">
-                    El procesamiento puede tomar unos minutos dependiendo del tamaño del archivo
+                    El procesamiento puede tomar unos minutos dependiendo del
+                    tamaño del archivo
                   </AlertDescription>
                 </Alert>
               </CardContent>
@@ -538,7 +668,11 @@ export default function NewCampaignPage() {
               <Button variant="outline" onClick={() => setCurrentStep(2)}>
                 Volver
               </Button>
-              <Button onClick={handleCreateCampaign} disabled={isProcessing} className="bg-blue-600 hover:bg-blue-700">
+              <Button
+                onClick={handleCreateCampaign}
+                disabled={isProcessing}
+                className="bg-blue-600 hover:bg-blue-700"
+              >
                 {isProcessing ? "Procesando..." : "Crear Campaña y Procesar"}
               </Button>
             </div>
@@ -554,8 +688,12 @@ export default function NewCampaignPage() {
               <div className="flex flex-col items-center text-center space-y-4">
                 <div className="h-12 w-12 animate-spin rounded-full border-4 border-border border-t-blue-600" />
                 <div>
-                  <h3 className="font-semibold text-lg text-foreground mb-2">{processingStatus}</h3>
-                  <p className="text-sm text-muted-foreground">Esto puede tomar unos momentos...</p>
+                  <h3 className="font-semibold text-lg text-foreground mb-2">
+                    {processingStatus}
+                  </h3>
+                  <p className="text-sm text-muted-foreground">
+                    Esto puede tomar unos momentos...
+                  </p>
                 </div>
               </div>
             </CardContent>
@@ -563,5 +701,5 @@ export default function NewCampaignPage() {
         </div>
       )}
     </div>
-  )
+  );
 }
