@@ -19,6 +19,7 @@ import {
   Send,
   AlertCircle,
   Download,
+  FileText,
   Package,
 } from "lucide-react";
 import Link from "next/link";
@@ -28,6 +29,12 @@ import { supabase, Tables } from "@/lib/supabase";
 import { toast } from "sonner";
 import * as XLSX from "xlsx";
 import { PersonaList } from "@/components/persona-list";
+import {
+  Tabs,
+  TabsList,
+  TabsTrigger,
+  TabsContent,
+} from "@/components/ui/tabs";
 
 type PersonaConPickit = Tables<"personas_contactar"> & {
   punto_pickit?: Tables<"puntos_pickit">;
@@ -65,6 +72,7 @@ export default function CampaignDetailPage() {
       >
     >
   >([]);
+  const [cortes, setCortes] = useState<Tables<"campana_cortes_diarios">[]>([]);
 
   // Redirect if someone tries to access /campanas/nueva through the dynamic route
   if (id === "nueva") {
@@ -73,6 +81,7 @@ export default function CampaignDetailPage() {
 
   useEffect(() => {
     loadCampaignData();
+    loadCortes();
 
     // Set up real-time subscription
     const channel = supabase
@@ -97,6 +106,16 @@ export default function CampaignDetailPage() {
         },
         () => loadCampaignData()
       )
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "campana_cortes_diarios",
+          filter: `campana_id=eq.${id}`,
+        },
+        () => loadCortes()
+      )
       .subscribe();
 
     return () => {
@@ -118,6 +137,20 @@ export default function CampaignDetailPage() {
     };
     loadPuntosPickit();
   }, []);
+  const loadCortes = async () => {
+    try {
+      const { data, error } = await supabase
+        .from("campana_cortes_diarios")
+        .select("*")
+        .eq("campana_id", id)
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      setCortes(data || []);
+    } catch (err) {
+      console.error("Error loading cortes diarios:", err);
+      toast.error("No se pudieron cargar los cortes diarios");
+    }
+  };
   const loadCampaignData = async () => {
     try {
       // Load campaign
@@ -235,6 +268,25 @@ export default function CampaignDetailPage() {
       toast.error("Error al enviar mensajes. Por favor intente nuevamente.");
     } finally {
       setSending(false);
+    }
+  };
+
+  const handleDownloadCorte = async (filePath: string, fileName: string) => {
+    try {
+      const { data, error } = await supabase.storage
+        .from("archivos-dtv")
+        .createSignedUrl(filePath, 60);
+      if (error || !data?.signedUrl) throw error;
+      const link = document.createElement("a");
+      link.href = data.signedUrl;
+      link.target = "_blank";
+      link.download = fileName;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+    } catch (error) {
+      console.error("Error downloading corte diario:", error);
+      toast.error("No se pudo descargar el archivo");
     }
   };
 
@@ -539,7 +591,20 @@ export default function CampaignDetailPage() {
       </header>
 
       <main className="container mx-auto px-6 py-8 max-w-6xl">
-        <div className="space-y-6">
+        <Tabs defaultValue="general" className="space-y-6">
+          <TabsList>
+            <TabsTrigger value="general">
+              <FileText className="mr-1 h-4 w-4" />
+              General
+            </TabsTrigger>
+            <TabsTrigger value="cortes">
+              <Download className="mr-1 h-4 w-4" />
+              Cortes Diarios
+            </TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="general">
+            <div className="space-y-6">
           {/* Bucket 1: Comprometidos - PRD */}
           <Card>
             <CardHeader>
@@ -1090,7 +1155,85 @@ export default function CampaignDetailPage() {
               )}
             </CardContent>
           </Card>
-        </div>
+            </div>
+          </TabsContent>
+
+          <TabsContent value="cortes">
+            <Card>
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Download className="h-5 w-5 text-blue-600" />
+                    <CardTitle>Cortes Diarios</CardTitle>
+                    <Badge variant="secondary">{cortes.length}</Badge>
+                  </div>
+                </div>
+                <CardDescription>
+                  Listado de archivos generados por el corte diario de Pickit
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                {cortes.length > 0 ? (
+                  <div className="space-y-2">
+                    {cortes.map((corte) => (
+                      <div
+                        key={corte.id}
+                        className="flex items-center justify-between p-3 border border-border rounded-lg hover:bg-muted/50 cursor-pointer"
+                        onClick={() =>
+                          handleDownloadCorte(corte.file_path, corte.file_name)
+                        }
+                        role="button"
+                        tabIndex={0}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter" || e.key === " ") {
+                            handleDownloadCorte(
+                              corte.file_path,
+                              corte.file_name
+                            );
+                          }
+                        }}
+                      >
+                        <div className="flex items-center gap-3">
+                          <div className="flex h-9 w-9 items-center justify-center rounded-md bg-blue-600/10">
+                            <FileText className="h-5 w-5 text-blue-700" />
+                          </div>
+                          <div>
+                            <p className="font-medium">{corte.file_name}</p>
+                            <p className="text-xs text-muted-foreground">
+                              {new Date(corte.created_at).toLocaleString(
+                                "es-AR"
+                              )}{" "}
+                              • {corte.total_filas} filas •{" "}
+                              {corte.total_personas} personas
+                            </p>
+                          </div>
+                        </div>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDownloadCorte(
+                              corte.file_path,
+                              corte.file_name
+                            );
+                          }}
+                        >
+                          <Download className="mr-2 h-4 w-4" />
+                          Descargar
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-sm text-muted-foreground text-center py-4">
+                    Aún no hay cortes diarios generados
+                  </p>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+        </Tabs>
       </main>
     </div>
   );
