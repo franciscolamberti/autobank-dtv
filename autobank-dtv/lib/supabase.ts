@@ -58,6 +58,44 @@ export type Database = {
         }
         Relationships: []
       }
+      campana_cortes_diarios: {
+        Row: {
+          campana_id: string
+          created_at: string
+          file_name: string
+          file_path: string
+          id: string
+          total_filas: number
+          total_personas: number
+        }
+        Insert: {
+          campana_id: string
+          created_at?: string
+          file_name: string
+          file_path: string
+          id?: string
+          total_filas: number
+          total_personas: number
+        }
+        Update: {
+          campana_id?: string
+          created_at?: string
+          file_name?: string
+          file_path?: string
+          id?: string
+          total_filas?: number
+          total_personas?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "campana_cortes_diarios_campana_id_fkey"
+            columns: ["campana_id"]
+            isOneToOne: false
+            referencedRelation: "campanas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       campanas: {
         Row: {
           archivo_url: string
@@ -156,6 +194,7 @@ export type Database = {
           estado_cliente_original: string | null
           estado_contacto: Database["public"]["Enums"]["estado_contacto_enum"]
           fecha_compromiso: string | null
+          fecha_compromiso_changed_at: string | null
           fecha_devolucion: string | null
           fecha_envio_recordatorio: string | null
           fecha_envio_whatsapp: string | null
@@ -200,6 +239,7 @@ export type Database = {
           estado_cliente_original?: string | null
           estado_contacto?: Database["public"]["Enums"]["estado_contacto_enum"]
           fecha_compromiso?: string | null
+          fecha_compromiso_changed_at?: string | null
           fecha_devolucion?: string | null
           fecha_envio_recordatorio?: string | null
           fecha_envio_whatsapp?: string | null
@@ -244,6 +284,7 @@ export type Database = {
           estado_cliente_original?: string | null
           estado_contacto?: Database["public"]["Enums"]["estado_contacto_enum"]
           fecha_compromiso?: string | null
+          fecha_compromiso_changed_at?: string | null
           fecha_devolucion?: string | null
           fecha_envio_recordatorio?: string | null
           fecha_envio_whatsapp?: string | null
@@ -293,7 +334,7 @@ export type Database = {
         Row: {
           created_at: string | null
           direccion: string
-          external_id: number | null
+          external_id: number
           id: string
           lat: number
           lon: number
@@ -302,7 +343,7 @@ export type Database = {
         Insert: {
           created_at?: string | null
           direccion: string
-          external_id?: number | null
+          external_id: number
           id?: string
           lat: number
           lon: number
@@ -311,7 +352,7 @@ export type Database = {
         Update: {
           created_at?: string | null
           direccion?: string
-          external_id?: number | null
+          external_id?: number
           id?: string
           lat?: number
           lon?: number

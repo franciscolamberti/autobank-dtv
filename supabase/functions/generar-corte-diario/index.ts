@@ -45,7 +45,7 @@ Deno.serve(async (req) => {
     // Obtener campaña con configuración
     const { data: campana, error: campanaError } = await supabaseClient
       .from("campanas")
-      .select("id, nombre, horario_corte_diario, created_at")
+      .select("id, nombre, horario_corte_diario, created_at, timezone")
       .eq("id", campana_id)
       .single();
 
@@ -57,17 +57,31 @@ Deno.serve(async (req) => {
     }
 
     // Obtener fecha de hoy en timezone de la campaña (default Argentina)
-    const timezone = "America/Argentina/Buenos_Aires";
-    const hoy = new Date();
-    const hoyLocal = new Date(
-      hoy.toLocaleString("en-US", { timeZone: timezone })
-    );
-    const fechaHoy = hoyLocal.toISOString().split("T")[0]; // YYYY-MM-DD
+    const timeZone = campana.timezone || "America/Argentina/Buenos_Aires";
+    const nowUtc = new Date();
+    const hoyLocal = new Date(nowUtc.toLocaleString("en-US", { timeZone }));
+    const fechaHoy = hoyLocal.toISOString().split("T")[0];
+
+    const { data: cortes, error: cortesError } = await supabaseClient
+      .from("campana_cortes_diarios")
+      .select("created_at")
+      .eq("campana_id", campana_id)
+      .order("created_at", { ascending: false })
+      .limit(1);
+
+    if (cortesError) {
+      console.error("Error fetching last cut:", cortesError);
+      throw cortesError;
+    }
+
+    const ultimoCorteAt = cortes?.[0]?.created_at
+      ? new Date(cortes[0].created_at)
+      : new Date(campana.created_at);
 
     // Consultar personas confirmadas con fecha_compromiso desde último corte
     // Según PRD: compromisos post-corte aparecen en el corte del día
     // Por simplicidad, generamos todos los confirmados con fecha_compromiso != null
-    const { data: personas, error: personasError } = await supabaseClient
+    let personasQuery = supabaseClient
       .from("personas_contactar")
       .select(
         `
@@ -78,12 +92,22 @@ Deno.serve(async (req) => {
         dni,
         email,
         telefono_principal,
+        fecha_compromiso_changed_at,
         punto_pickit:puntos_pickit(external_id)
       `
       )
       .eq("campana_id", campana_id)
       .eq("estado_contacto", "confirmado")
       .not("fecha_compromiso", "is", null);
+
+    if (ultimoCorteAt) {
+      personasQuery = personasQuery.gte(
+        "fecha_compromiso_changed_at",
+        ultimoCorteAt.toISOString()
+      );
+    }
+
+    const { data: personas, error: personasError } = await personasQuery;
 
     if (personasError) {
       console.error("Error fetching personas:", personasError);
@@ -94,7 +118,9 @@ Deno.serve(async (req) => {
       return new Response(
         JSON.stringify({
           success: true,
-          message: "No hay personas confirmadas con fecha de compromiso",
+          message: ultimoCorteAt
+            ? "Sin confirmados desde el último corte"
+            : "No hay personas confirmadas con fecha de compromiso",
           campana_id,
           total_filas: 0,
         }),
@@ -163,6 +189,20 @@ Deno.serve(async (req) => {
             "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
           upsert: true,
         });
+
+    const { error: corteInsertError } = await supabaseClient
+      .from("campana_cortes_diarios")
+      .insert({
+        campana_id,
+        file_name: fileName,
+        file_path: uploadData.path,
+        total_files: filasExcel.length,
+        total_personas: personas.length,
+      });
+
+    if (corteInsertError) {
+      console.error("Error inserting cut record:", corteInsertError);
+    }
 
     if (uploadError) {
       console.error("Error uploading daily cut file:", uploadError);
