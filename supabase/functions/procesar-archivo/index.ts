@@ -428,38 +428,6 @@ Deno.serve(async (req) => {
     let fuera = 0;
     const fueraRangoListado: any[] = [];
 
-    const validarWa =
-      (Deno.env.get("VALIDAR_WA") || "false").toLowerCase() === "true";
-    const kapsoApiKey = Deno.env.get("KAPSO_API_KEY") || null;
-
-    async function validarWhatsappKapso(
-      telefonoNormalizado: string
-    ): Promise<boolean | null> {
-      if (
-        !kapsoPhoneNumberId ||
-        !kapsoApiKey ||
-        !telefonoNormalizado.startsWith("+54")
-      )
-        return null;
-      const waId = telefonoNormalizado.replace(/^\+/, "");
-      const url = `https://api.kapso.ai/meta/whatsapp/v23.0/${kapsoPhoneNumberId}/contacts/${waId}`;
-      const controller = new AbortController();
-      const t = setTimeout(() => controller.abort(), 5000);
-      try {
-        const res = await fetch(url, {
-          headers: { "X-API-Key": kapsoApiKey },
-          signal: controller.signal,
-        });
-        clearTimeout(t);
-        if (res.status === 200) return true;
-        if (res.status === 404) return null;
-        return null;
-      } catch (_) {
-        clearTimeout(t);
-        return null;
-      }
-    }
-
     if (Array.isArray(puntosPickit) && puntosPickit.length > 0) {
       for (const p of deduplicadas) {
         let min: number | null = null;
@@ -481,12 +449,6 @@ Deno.serve(async (req) => {
         // Si es teléfono fijo (cols 38-39), marcar como sin WhatsApp
         if (p.probableFijo) {
           tieneWhatsapp = false;
-        } else if (validarWa) {
-          // Si es móvil (cols 40-41) y flag activado, validar con Kapso
-          const telNorm = p.telefonoNormalizado || p.telefonoPrincipal;
-          if (telNorm && typeof telNorm === "string") {
-            tieneWhatsapp = await validarWhatsappKapso(telNorm);
-          }
         }
 
         const registro = {

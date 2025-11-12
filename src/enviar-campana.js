@@ -218,12 +218,14 @@ async function enviarKapsoWorkflow(
       phone_number: persona.telefono_principal,
       phone_number_id:
         campana.kapso_phone_number_id || env.KAPSO_PHONE_NUMBER_ID,
+      whatsapp_config_id: env.KAPSO_WHATSAPP_CONFIG_ID,
       variables: esRecordatorio
         ? {
             nombre_cliente: persona.apellido_nombre,
             punto_pickit: persona.puntos_pickit?.nombre || "N/A",
             direccion_punto: persona.puntos_pickit?.direccion || "N/A",
             nros_wo: nrosWOStr,
+            persona_id: persona.id,
           }
         : {
             nombre_cliente: persona.apellido_nombre,
@@ -234,6 +236,7 @@ async function enviarKapsoWorkflow(
             punto_pickit: persona.puntos_pickit?.nombre || "N/A",
             direccion_punto: persona.puntos_pickit?.direccion || "N/A",
             distancia: `${Math.round(persona.distancia_metros)} metros`,
+            persona_id: persona.id,
           },
       context: {
         source: esRecordatorio
@@ -258,25 +261,22 @@ async function enviarKapsoWorkflow(
     const errorData = await response
       .json()
       .catch(() => ({ error: { message: response.statusText } }));
-    const errorCode = errorData.error?.code;
-    const errorMessage = errorData?.error?.message || response.statusText;
+    const errorMessage = errorData?.error || response.statusText || null;
 
     // Capturar errores Meta según PRD
     // code 1357045: recipient not found
     // code 131026: invalid phone number
     // code 131047: re-engagement message
-    if ([1357045, 131026, 131047].includes(errorCode)) {
-      // Marcar tiene_whatsapp = false
-      await actualizarSupabase(
-        env,
-        "personas_contactar",
-        {
-          tiene_whatsapp: false,
-          error_envio_kapso: `Error ${errorCode}: ${errorMessage}`,
-        },
-        new URLSearchParams({ id: `eq.${persona.id}` })
-      );
-    }
+    // Marcar tiene_whatsapp = false
+    await actualizarSupabase(
+      env,
+      "personas_contactar",
+      {
+        tiene_whatsapp: false,
+        error_envio_kapso: errorMessage,
+      },
+      new URLSearchParams({ id: `eq.${persona.id}` })
+    );
 
     throw new Error(
       `error kapso: ${response.status} - ${JSON.stringify(errorData)}`
