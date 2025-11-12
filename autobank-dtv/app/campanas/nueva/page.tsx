@@ -32,7 +32,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { supabase } from "@/lib/supabase";
+import { supabase, Tables } from "@/lib/supabase";
 import { useToast } from "@/hooks/use-toast";
 
 export default function NewCampaignPage() {
@@ -86,6 +86,9 @@ export default function NewCampaignPage() {
     setIsProcessing(true);
     setProcessingStatus("Creando campaña...");
 
+    let createdCampana: Tables<"campanas"> | null = null;
+    let fileName: string | null = null;
+
     try {
       // 1. crear registro de campaña con todos los campos PRD
       const { data: campana, error: campanaError } = await supabase
@@ -116,10 +119,12 @@ export default function NewCampaignPage() {
         throw new Error(`Error creando campaña: ${campanaError.message}`);
       }
 
+      createdCampana = campana;
+
       setProcessingStatus("Subiendo archivo...");
 
       // 2. subir archivo a storage
-      const fileName = `${campana.id}/${selectedFile.name}`;
+      fileName = `${campana.id}/${selectedFile.name}`;
       const { error: uploadError } = await supabase.storage
         .from("archivos-dtv")
         .upload(fileName, selectedFile);
@@ -185,6 +190,14 @@ export default function NewCampaignPage() {
       // redirigir a detalle de campaña
       router.push(`/campanas/${campana.id}`);
     } catch (error) {
+      if (createdCampana) {
+        await supabase.from("campanas").delete().eq("id", createdCampana.id);
+      }
+
+      if (fileName) {
+        await supabase.storage.from("archivos-dtv").remove([fileName]);
+      }
+
       console.error("Error:", error);
       toast({
         title: "Error creando campaña",
