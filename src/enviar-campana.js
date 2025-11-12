@@ -200,7 +200,7 @@ async function enviarKapsoWorkflow(
     );
   }
 
-  const url = `https://api.kapso.ai/platform/v1/workflows/${workflowId}/executions`;
+  const url = `https://app.kapso.ai/api/v1/flows/${workflowId}/executions`;
 
   // Construir variables según PRD
   const cantidadDecos = persona.cantidad_decos || 1;
