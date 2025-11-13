@@ -177,125 +177,134 @@ async function enviarKapsoWorkflow(
   env,
   esRecordatorio = false
 ) {
-  if (DRY_RUN) {
-    console.log("[DRY_RUN] Simulando envío a Kapso:", {
-      persona_id: persona.id,
-      telefono: persona.telefono_principal,
-      workflow: esRecordatorio
-        ? campana.kapso_workflow_id_recordatorio
-        : campana.kapso_workflow_id,
-    });
-    return { success: true, simulated: true };
-  }
-
-  const workflowId = esRecordatorio
-    ? campana.kapso_workflow_id_recordatorio
-    : campana.kapso_workflow_id;
-
-  if (!workflowId) {
-    throw new Error(
-      `Workflow ID no configurado para ${
-        esRecordatorio ? "recordatorio" : "contacto principal"
-      }`
-    );
-  }
-
-  const url = `https://api.kapso.ai/platform/v1/workflows/${workflow_id}/executions`;
-
-  // Construir variables según PRD
-  const cantidadDecos = persona.cantidad_decos || 1;
-  const nrosCliente =
-    persona.nros_cliente || (persona.nro_cliente ? [persona.nro_cliente] : []);
-  const nrosWO = persona.nros_wo || (persona.nro_wo ? [persona.nro_wo] : []);
-  const textoDeco =
-    cantidadDecos === 1 ? "el decodificador" : "los decodificadores";
-  const nrosClienteStr = nrosCliente.join(", ");
-  const nrosWOStr = nrosWO.join(", ");
-
-  // Payload según PRD
-  const body = {
-    workflow_execution: {
-      phone_number: persona.telefono_principal,
-      phone_number_id:
-        campana.kapso_phone_number_id || env.KAPSO_PHONE_NUMBER_ID,
-      whatsapp_config_id: env.KAPSO_WHATSAPP_CONFIG_ID,
-      variables: esRecordatorio
-        ? {
-            nombre_cliente: persona.apellido_nombre,
-            punto_pickit: persona.puntos_pickit?.nombre || "N/A",
-            direccion_punto: persona.puntos_pickit?.direccion || "N/A",
-            nros_wo: nrosWOStr,
-            persona_id: persona.id,
-          }
-        : {
-            nombre_cliente: persona.apellido_nombre,
-            nro_cliente: persona.nro_cliente || "",
-            nros_cliente: nrosClienteStr,
-            cantidad_decos: cantidadDecos,
-            texto_deco: textoDeco,
-            punto_pickit: persona.puntos_pickit?.nombre || "N/A",
-            direccion_punto: persona.puntos_pickit?.direccion || "N/A",
-            distancia: `${Math.round(persona.distancia_metros)} metros`,
-            persona_id: persona.id,
-          },
-      context: {
-        source: esRecordatorio
-          ? "sistema_pickit_recordatorio"
-          : "sistema_pickit",
-        campana_id: persona.campana_id,
+  console.log("ENTRO ACA")
+  try {
+    if (DRY_RUN) {
+      console.log("[DRY_RUN] Simulando envío a Kapso:", {
         persona_id: persona.id,
+        telefono: persona.telefono_principal,
+        workflow: esRecordatorio
+          ? campana.kapso_workflow_id_recordatorio
+          : campana.kapso_workflow_id,
+      });
+      return { success: true, simulated: true };
+    }
+
+    const workflowId = esRecordatorio
+      ? campana.kapso_workflow_id_recordatorio
+      : campana.kapso_workflow_id;
+
+    if (!workflowId) {
+      throw new Error(
+        `Workflow ID no configurado para ${
+          esRecordatorio ? "recordatorio" : "contacto principal"
+        }`
+      );
+    }
+
+    const url = `https://api.kapso.ai/platform/v1/workflows/${workflowId}/executions`;
+
+    // Construir variables según PRD
+    const cantidadDecos = persona.cantidad_decos || 1;
+    const nrosCliente =
+      persona.nros_cliente ||
+      (persona.nro_cliente ? [persona.nro_cliente] : []);
+    const nrosWO = persona.nros_wo || (persona.nro_wo ? [persona.nro_wo] : []);
+    const textoDeco =
+      cantidadDecos === 1 ? "el decodificador" : "los decodificadores";
+    const nrosClienteStr = nrosCliente.join(", ");
+    const nrosWOStr = nrosWO.join(", ");
+
+    // Payload según PRD
+    const body = {
+      workflow_execution: {
+        phone_number: persona.telefono_principal,
+        phone_number_id:
+          campana.kapso_phone_number_id || env.KAPSO_PHONE_NUMBER_ID,
+        variables: esRecordatorio
+          ? {
+              nombre_cliente: persona.apellido_nombre,
+              punto_pickit: persona.puntos_pickit?.nombre || "N/A",
+              direccion_punto: persona.puntos_pickit?.direccion || "N/A",
+              nros_wo: nrosWOStr,
+              persona_id: persona.id,
+            }
+          : {
+              nombre_cliente: persona.apellido_nombre,
+              nro_cliente: persona.nro_cliente || "",
+              nros_cliente: nrosClienteStr,
+              cantidad_decos: cantidadDecos,
+              texto_deco: textoDeco,
+              punto_pickit: persona.puntos_pickit?.nombre || "N/A",
+              direccion_punto: persona.puntos_pickit?.direccion || "N/A",
+              distancia: `${Math.round(persona.distancia_metros)} metros`,
+              persona_id: persona.id,
+            },
+        context: {
+          source: esRecordatorio
+            ? "sistema_pickit_recordatorio"
+            : "sistema_pickit",
+          campana_id: persona.campana_id,
+          persona_id: persona.id,
+        },
       },
-    },
-  };
+    };
 
-  const response = await fetch(url, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "X-API-Key": env.KAPSO_API_KEY,
-    },
-    body: JSON.stringify(body),
-  });
 
-  if (!response.ok) {
-    const errorData = await response
-      .json()
-      .catch(() => ({ error: { message: response.statusText } }));
-    const errorMessage = errorData?.error || response.statusText || null;
+    console.log({ body: JSON.stringify(body) });
+    throw error;
 
-    // Capturar errores Meta según PRD
-    // code 1357045: recipient not found
-    // code 131026: invalid phone number
-    // code 131047: re-engagement message
-    // Marcar tiene_whatsapp = false
-    await actualizarSupabase(
-      env,
-      "personas_contactar",
-      {
-        tiene_whatsapp: false,
-        error_envio_kapso: errorMessage,
+    const response = await fetch(url, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-API-Key": env.KAPSO_API_KEY,
       },
-      new URLSearchParams({ id: `eq.${persona.id}` })
-    );
+      body: JSON.stringify(body),
+    });
 
-    throw new Error(
-      `error kapso: ${response.status} - ${JSON.stringify(errorData)}`
-    );
+    if (!response.ok) {
+      const errorData = await response
+        .json()
+        .catch(() => ({ error: { message: response.statusText } }));
+      const errorMessage = errorData?.error || response.statusText || null;
+
+      // Capturar errores Meta según PRD
+      // code 1357045: recipient not found
+      // code 131026: invalid phone number
+      // code 131047: re-engagement message
+      // Marcar tiene_whatsapp = false
+      await actualizarSupabase(
+        env,
+        "personas_contactar",
+        {
+          tiene_whatsapp: false,
+          error_envio_kapso: errorMessage,
+        },
+        new URLSearchParams({ id: `eq.${persona.id}` })
+      );
+
+      throw new Error(
+        `error kapso: ${response.status} - ${JSON.stringify(errorData)}`
+      );
+    }
+
+    const result = await response.json();
+    const trackingId = result.data?.tracking_id;
+
+    if (trackingId && !DRY_RUN) {
+      await actualizarSupabase(
+        env,
+        "personas_contactar",
+        { kapso_tracking_id: trackingId },
+        new URLSearchParams({ id: `eq.${persona.id}` })
+      );
+    }
+
+    return result;
+  } catch (err) {
+    throw err;
   }
-
-  const result = await response.json();
-  const trackingId = result.data?.tracking_id;
-
-  if (trackingId && !DRY_RUN) {
-    await actualizarSupabase(
-      env,
-      "personas_contactar",
-      { kapso_tracking_id: trackingId },
-      new URLSearchParams({ id: `eq.${persona.id}` })
-    );
-  }
-
-  return result;
 }
 
 /**
@@ -414,7 +423,7 @@ async function procesarCampana(env, campanaId, esManual = true) {
       params: queryParams,
     });
 
-    console.log({ personas, queryParams });
+    console.log({ personas, queryParams }, '< ACA');
 
     log.pasos.push({
       paso: 3,

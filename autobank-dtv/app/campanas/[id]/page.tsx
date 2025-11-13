@@ -26,7 +26,7 @@ import Link from "next/link";
 import { redirect, useParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import { supabase, Tables } from "@/lib/supabase";
-import { toast } from "sonner";
+import { useToast } from "@/hooks/use-toast";
 import * as XLSX from "xlsx";
 import { PersonaList } from "@/components/persona-list";
 import {
@@ -51,6 +51,7 @@ interface PersonasSections {
 export default function CampaignDetailPage() {
   const params = useParams();
   const id = params?.id as string;
+  const { toast } = useToast();
 
   const [campaign, setCampaign] = useState<Partial<Tables<"campanas">> | null>(
     null
@@ -148,7 +149,7 @@ export default function CampaignDetailPage() {
       setCortes(data || []);
     } catch (err) {
       console.error("Error loading cortes diarios:", err);
-      toast.error("No se pudieron cargar los cortes diarios");
+      toast({ title: "No se pudieron cargar los cortes diarios", variant: "destructive" });
     }
   };
   const loadCampaignData = async () => {
@@ -230,7 +231,7 @@ export default function CampaignDetailPage() {
       setPersonas(sections);
     } catch (error) {
       console.error("Error loading campaign:", error);
-      toast.error("Error al cargar los datos de la campaña");
+      toast({ title: "Error al cargar los datos de la campaña", variant: "destructive" });
     } finally {
       setLoading(false);
     }
@@ -258,14 +259,12 @@ export default function CampaignDetailPage() {
       }
 
       const result = await response.json();
-      toast.success(
-        `Mensajes iniciados. ${result.resumen?.exitosas || 0} enviados`
-      );
+      toast({ title: `Mensajes iniciados. ${result.resumen?.exitosas || 0} enviados` });
 
       await loadCampaignData();
     } catch (error) {
       console.error("Error sending messages:", error);
-      toast.error("Error al enviar mensajes. Por favor intente nuevamente.");
+      toast({ title: "Error al enviar mensajes. Por favor intente nuevamente.", variant: "destructive" });
     } finally {
       setSending(false);
     }
@@ -286,7 +285,7 @@ export default function CampaignDetailPage() {
       link.remove();
     } catch (error) {
       console.error("Error downloading corte diario:", error);
-      toast.error("No se pudo descargar el archivo");
+      toast({ title: "No se pudo descargar el archivo", variant: "destructive" });
     }
   };
 
@@ -308,14 +307,14 @@ export default function CampaignDetailPage() {
 
       if (error) throw error;
 
-      toast.success(
-        newValue
+      toast({
+        title: newValue
           ? "Decodificador marcado como devuelto"
-          : "Marca de devolución removida"
-      );
+          : "Marca de devolución removida",
+      });
     } catch (error) {
       console.error("Error updating decoder return:", error);
-      toast.error("Error al actualizar el estado de devolución");
+      toast({ title: "Error al actualizar el estado de devolución", variant: "destructive" });
     }
   };
 
@@ -324,12 +323,12 @@ export default function CampaignDetailPage() {
     personas: Tables<"personas_contactar">[]
   ) => {
     if (personas.length === 0) {
-      toast.error(`No hay personas en el bucket ${bucketName}`);
+      toast({ title: `No hay personas en el bucket ${bucketName}`, variant: "destructive" });
       return;
     }
 
     try {
-      toast.info(`Preparando export de ${bucketName}...`);
+      toast({ title: `Preparando export de ${bucketName}...` });
 
       const excelData = personas.map((persona: any) => ({
         "Apellido y Nombre": persona.apellido_nombre || "",
@@ -379,16 +378,16 @@ export default function CampaignDetailPage() {
       }.xlsx`;
       XLSX.writeFile(wb, fileName);
 
-      toast.success(`Export de ${bucketName} descargado exitosamente`);
+      toast({ title: `Export de ${bucketName} descargado exitosamente` });
     } catch (error) {
       console.error("Error exporting bucket:", error);
-      toast.error(`Error al generar el export de ${bucketName}`);
+      toast({ title: `Error al generar el export de ${bucketName}`, variant: "destructive" });
     }
   };
 
   const handleExportToExcel = async () => {
     try {
-      toast.info("Preparando archivo Excel...");
+      toast({ title: "Preparando archivo Excel..." });
 
       // Fetch all personas with all fields including punto_pickit
       const { data: personasData, error } = await supabase
@@ -491,10 +490,10 @@ export default function CampaignDetailPage() {
       // Download file
       XLSX.writeFile(wb, fileName);
 
-      toast.success("Archivo Excel descargado exitosamente");
+      toast({ title: "Archivo Excel descargado exitosamente" });
     } catch (error) {
       console.error("Error exporting to Excel:", error);
-      toast.error("Error al generar el archivo Excel");
+      toast({ title: "Error al generar el archivo Excel", variant: "destructive" });
     }
   };
 
