@@ -414,6 +414,8 @@ async function procesarCampana(env, campanaId, esManual = true) {
       params: queryParams,
     });
 
+    console.log({ personas, queryParams });
+
     log.pasos.push({
       paso: 3,
       resultado: "ok",
