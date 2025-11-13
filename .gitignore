@@ -58,3 +58,5 @@ test-*.sh
 *.pem
 *.key
 *.secret
+
+.dev.vars

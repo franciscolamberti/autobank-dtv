@@ -394,8 +394,9 @@ async function procesarCampana(env, campanaId, esManual = true) {
     const queryParams = new URLSearchParams({
       campana_id: `eq.${campanaId}`,
       dentro_rango: "eq.true",
-      tiene_whatsapp: "neq.false",
     });
+
+    queryParams.append("or", "(tiene_whatsapp.is.null,tiene_whatsapp.eq.true)");
 
     if (esManual) {
       queryParams.append("estado_contacto", "in.(pendiente,encolado)");
