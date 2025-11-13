@@ -190,19 +190,7 @@ async function enviarKapsoWorkflow(
       return { success: true, simulated: true };
     }
 
-    const workflowId = esRecordatorio
-      ? campana.kapso_workflow_id_recordatorio
-      : campana.kapso_workflow_id;
-
-    if (!workflowId) {
-      throw new Error(
-        `Workflow ID no configurado para ${
-          esRecordatorio ? "recordatorio" : "contacto principal"
-        }`
-      );
-    }
-
-    const url = `https://api.kapso.ai/platform/v1/workflows/${workflowId}/executions`;
+    const url = 'https://api.kapso.ai/platform/v1/workflows/3af75433-75f6-4a07-9ebc-90d161d29d32/executions';
 
     // Construir variables según PRD
     const cantidadDecos = persona.cantidad_decos || 1;
@@ -250,9 +238,6 @@ async function enviarKapsoWorkflow(
       },
     };
 
-
-    console.log({ body: JSON.stringify(body) });
-    throw error;
 
     const response = await fetch(url, {
       method: "POST",

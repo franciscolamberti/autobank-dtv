@@ -226,10 +226,15 @@ Deno.serve(async (req) => {
   try {
     // Leer body como texto para verificar firma
     const bodyText = await req.text()
+    try {
+      console.log(`Received Kapso webhook JSON: ${await req.json()}`);
+    } catch(err) {
+      console.error(`No se pudo parsear JSON ${err}`);
+    }
+    console.log(`Received Kapso webhook: ${bodyText}`);
     
     // Parsear payload
     const payload: KapsoWebhookPayload = parsePayload(bodyText)
-    console.log('Received Kapso webhook:', JSON.stringify(payload, null, 2))
 
     // Validate required fields
     if (!payload.context?.persona_id) {
