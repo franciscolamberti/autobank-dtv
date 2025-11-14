@@ -29,12 +29,8 @@ import { supabase, Tables } from "@/lib/supabase";
 import { useToast } from "@/hooks/use-toast";
 import * as XLSX from "xlsx";
 import { PersonaList } from "@/components/persona-list";
-import {
-  Tabs,
-  TabsList,
-  TabsTrigger,
-  TabsContent,
-} from "@/components/ui/tabs";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { formatIsoDateToDmy } from "@/lib/utils/date";
 
 type PersonaConPickit = Tables<"personas_contactar"> & {
   punto_pickit?: Tables<"puntos_pickit">;
@@ -149,7 +145,10 @@ export default function CampaignDetailPage() {
       setCortes(data || []);
     } catch (err) {
       console.error("Error loading cortes diarios:", err);
-      toast({ title: "No se pudieron cargar los cortes diarios", variant: "destructive" });
+      toast({
+        title: "No se pudieron cargar los cortes diarios",
+        variant: "destructive",
+      });
     }
   };
   const loadCampaignData = async () => {
@@ -231,7 +230,10 @@ export default function CampaignDetailPage() {
       setPersonas(sections);
     } catch (error) {
       console.error("Error loading campaign:", error);
-      toast({ title: "Error al cargar los datos de la campaña", variant: "destructive" });
+      toast({
+        title: "Error al cargar los datos de la campaña",
+        variant: "destructive",
+      });
     } finally {
       setLoading(false);
     }
@@ -259,12 +261,17 @@ export default function CampaignDetailPage() {
       }
 
       const result = await response.json();
-      toast({ title: `Mensajes iniciados. ${result.resumen?.exitosas || 0} enviados` });
+      toast({
+        title: `Mensajes iniciados. ${result.resumen?.exitosas || 0} enviados`,
+      });
 
       await loadCampaignData();
     } catch (error) {
       console.error("Error sending messages:", error);
-      toast({ title: "Error al enviar mensajes. Por favor intente nuevamente.", variant: "destructive" });
+      toast({
+        title: "Error al enviar mensajes. Por favor intente nuevamente.",
+        variant: "destructive",
+      });
     } finally {
       setSending(false);
     }
@@ -285,7 +292,10 @@ export default function CampaignDetailPage() {
       link.remove();
     } catch (error) {
       console.error("Error downloading corte diario:", error);
-      toast({ title: "No se pudo descargar el archivo", variant: "destructive" });
+      toast({
+        title: "No se pudo descargar el archivo",
+        variant: "destructive",
+      });
     }
   };
 
@@ -314,7 +324,10 @@ export default function CampaignDetailPage() {
       });
     } catch (error) {
       console.error("Error updating decoder return:", error);
-      toast({ title: "Error al actualizar el estado de devolución", variant: "destructive" });
+      toast({
+        title: "Error al actualizar el estado de devolución",
+        variant: "destructive",
+      });
     }
   };
 
@@ -323,7 +336,10 @@ export default function CampaignDetailPage() {
     personas: Tables<"personas_contactar">[]
   ) => {
     if (personas.length === 0) {
-      toast({ title: `No hay personas en el bucket ${bucketName}`, variant: "destructive" });
+      toast({
+        title: `No hay personas en el bucket ${bucketName}`,
+        variant: "destructive",
+      });
       return;
     }
 
@@ -381,7 +397,10 @@ export default function CampaignDetailPage() {
       toast({ title: `Export de ${bucketName} descargado exitosamente` });
     } catch (error) {
       console.error("Error exporting bucket:", error);
-      toast({ title: `Error al generar el export de ${bucketName}`, variant: "destructive" });
+      toast({
+        title: `Error al generar el export de ${bucketName}`,
+        variant: "destructive",
+      });
     }
   };
 
@@ -493,7 +512,10 @@ export default function CampaignDetailPage() {
       toast({ title: "Archivo Excel descargado exitosamente" });
     } catch (error) {
       console.error("Error exporting to Excel:", error);
-      toast({ title: "Error al generar el archivo Excel", variant: "destructive" });
+      toast({
+        title: "Error al generar el archivo Excel",
+        variant: "destructive",
+      });
     }
   };
 
@@ -604,556 +626,561 @@ export default function CampaignDetailPage() {
 
           <TabsContent value="general">
             <div className="space-y-6">
-          {/* Bucket 1: Comprometidos - PRD */}
-          <Card>
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <CheckCircle2 className="h-5 w-5 text-green-600" />
-                  <CardTitle>Comprometidos</CardTitle>
-                  <Badge variant="secondary">
-                    {personas.comprometidos.length}
-                  </Badge>
-                </div>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() =>
-                    handleExportBucket("Comprometidos", personas.comprometidos)
-                  }
-                  disabled={personas.comprometidos.length === 0}
-                >
-                  <Download className="mr-2 h-4 w-4" />
-                  Exportar
-                </Button>
-              </div>
-              <CardDescription>
-                Personas confirmadas con fecha de compromiso. Aparecen en
-                archivo diario Pickit en el corte del día del compromiso
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              {personas.comprometidos.length > 0 ? (
-                <PersonaList
-                  personas={personas.comprometidos}
-                  puntosPickit={puntosPickit}
-                  renderItem={(persona) => (
-                    <div
-                      key={persona.id}
-                      className="flex items-center justify-between p-3 border border-border rounded-lg hover:bg-muted/50 bg-green-50/50"
-                    >
-                      <div className="flex items-center gap-3 flex-1">
-                        <Checkbox
-                          checked={persona.decodificador_devuelto}
-                          onCheckedChange={() =>
-                            handleToggleDevolucion(
-                              persona.id,
-                              persona.decodificador_devuelto
-                            )
-                          }
-                          className="shrink-0"
-                        />
-                        <div className="flex-1">
-                          <div className="flex items-center gap-2">
-                            <p className="font-medium">
-                              {persona.apellido_nombre}
-                            </p>
-                            {(persona.cantidad_decos || 0) > 1 && (
-                              <Badge
-                                variant="outline"
-                                className="text-blue-600 border-blue-200 bg-blue-50 text-xs"
-                              >
-                                {persona.cantidad_decos} decos
-                              </Badge>
-                            )}
-                            {persona.decodificador_devuelto && (
-                              <Badge
-                                variant="outline"
-                                className="text-green-600 border-green-200 bg-green-50"
-                              >
-                                <Package className="h-3 w-3 mr-1" />
-                                Devuelto
-                              </Badge>
-                            )}
-                          </div>
-                          <p className="text-sm text-muted-foreground">
-                            {persona.telefono_principal}
-                          </p>
-                          <p className="text-sm font-semibold text-green-700 mt-1">
-                            Comprometido:{" "}
-                            {persona.fecha_compromiso
-                              ? new Date(
-                                  persona.fecha_compromiso
-                                ).toLocaleDateString("es-AR")
-                              : "Sin fecha"}
-                          </p>
-                          {persona.punto_pickit && (
-                            <p className="text-xs text-muted-foreground mt-1">
-                              {persona.punto_pickit.nombre}
-                            </p>
-                          )}
-                        </div>
-                      </div>
-                      <div className="text-right text-sm text-muted-foreground">
-                        {persona.fecha_respuesta && (
-                          <p>
-                            Confirmado:{" "}
-                            {new Date(
-                              persona.fecha_respuesta
-                            ).toLocaleDateString("es-AR")}
-                          </p>
-                        )}
-                      </div>
+              {/* Bucket 1: Comprometidos - PRD */}
+              <Card>
+                <CardHeader>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <CheckCircle2 className="h-5 w-5 text-green-600" />
+                      <CardTitle>Comprometidos</CardTitle>
+                      <Badge variant="secondary">
+                        {personas.comprometidos.length}
+                      </Badge>
                     </div>
-                  )}
-                />
-              ) : (
-                <p className="text-sm text-muted-foreground text-center py-4">
-                  No hay compromisos aún
-                </p>
-              )}
-            </CardContent>
-          </Card>
-
-          {/* Bucket 2: In Progress - PRD */}
-          <Card>
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <Clock className="h-5 w-5 text-orange-600" />
-                  <CardTitle>In Progress / Contactados</CardTitle>
-                  <Badge variant="secondary">
-                    {personas.inProgress.length}
-                  </Badge>
-                </div>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() =>
-                    handleExportBucket("InProgress", personas.inProgress)
-                  }
-                  disabled={personas.inProgress.length === 0}
-                >
-                  <Download className="mr-2 h-4 w-4" />
-                  Exportar
-                </Button>
-              </div>
-              <CardDescription>
-                Conversación activa: encolado, enviado WhatsApp, o respondió
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              {personas.inProgress.length > 0 ? (
-                <PersonaList
-                  personas={personas.inProgress}
-                  puntosPickit={puntosPickit}
-                  renderItem={(persona) => (
-                    <div
-                      key={persona.id}
-                      className="flex items-center justify-between p-3 border border-border rounded-lg hover:bg-muted/50"
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() =>
+                        handleExportBucket(
+                          "Comprometidos",
+                          personas.comprometidos
+                        )
+                      }
+                      disabled={personas.comprometidos.length === 0}
                     >
-                      <div className="flex items-center gap-3 flex-1">
-                        <Checkbox
-                          checked={persona.decodificador_devuelto}
-                          onCheckedChange={() =>
-                            handleToggleDevolucion(
-                              persona.id,
-                              persona.decodificador_devuelto
-                            )
-                          }
-                          className="shrink-0"
-                        />
-                        <div className="flex-1">
-                          <div className="flex items-center gap-2">
-                            <p className="font-medium">
-                              {persona.apellido_nombre}
-                            </p>
-                            {(persona.cantidad_decos || 0) > 1 && (
-                              <Badge
-                                variant="outline"
-                                className="text-blue-600 border-blue-200 bg-blue-50 text-xs"
-                              >
-                                {persona.cantidad_decos} decos
-                              </Badge>
-                            )}
-                            {persona.decodificador_devuelto && (
-                              <Badge
-                                variant="outline"
-                                className="text-green-600 border-green-200 bg-green-50"
-                              >
-                                <Package className="h-3 w-3 mr-1" />
-                                Devuelto
-                              </Badge>
-                            )}
-                          </div>
-                          <p className="text-sm text-muted-foreground">
-                            {persona.telefono_principal}
-                          </p>
-                          {persona.respuesta_texto && (
-                            <p className="text-sm text-orange-700 mt-1 italic">
-                              "{persona.respuesta_texto}"
-                            </p>
-                          )}
-                        </div>
-                      </div>
-                      <div className="text-right">
-                        <Badge variant="outline" className="capitalize">
-                          {persona.estado_contacto === "encolado" && "Encolado"}
-                          {persona.estado_contacto === "enviado_whatsapp" &&
-                            "Enviado"}
-                          {persona.estado_contacto === "respondio" &&
-                            "Respondió"}
-                          {persona.estado_contacto === "pendiente" &&
-                            "Pendiente"}
-                        </Badge>
-                        {persona.fecha_envio_whatsapp && (
-                          <p className="text-xs text-muted-foreground mt-1">
-                            {new Date(
-                              persona.fecha_envio_whatsapp
-                            ).toLocaleDateString("es-AR")}
-                          </p>
-                        )}
-                      </div>
-                    </div>
-                  )}
-                />
-              ) : (
-                <p className="text-sm text-muted-foreground text-center py-4">
-                  No hay personas en progreso
-                </p>
-              )}
-            </CardContent>
-          </Card>
-
-          {/* Bucket 3: Fuera de Rango - PRD */}
-          <Card>
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <XCircle className="h-5 w-5 text-red-600" />
-                  <CardTitle>Fuera de Rango</CardTitle>
-                  <Badge variant="secondary">
-                    {personas.fueraDeRango.length}
-                  </Badge>
-                </div>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() =>
-                    handleExportBucket("FueraDeRango", personas.fueraDeRango)
-                  }
-                  disabled={personas.fueraDeRango.length === 0}
-                >
-                  <Download className="mr-2 h-4 w-4" />
-                  Exportar
-                </Button>
-              </div>
-              <CardDescription>
-                Distancia mayor a {campaign?.distancia_max || 2000}m. Export
-                generado al crear campaña
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              {personas.fueraDeRango.length > 0 ? (
-                <PersonaList
-                  personas={personas.fueraDeRango}
-                  puntosPickit={puntosPickit}
-                  renderItem={(persona) => (
-                    <div
-                      key={persona.id}
-                      className="flex items-center justify-between p-3 border border-border rounded-lg hover:bg-muted/50"
-                    >
-                      <div className="flex items-center gap-3 flex-1">
-                        <Checkbox
-                          checked={persona.decodificador_devuelto}
-                          onCheckedChange={() =>
-                            handleToggleDevolucion(
-                              persona.id,
-                              persona.decodificador_devuelto
-                            )
-                          }
-                          className="shrink-0"
-                        />
-                        <div className="flex-1">
-                          <div className="flex items-center gap-2">
-                            <p className="font-medium">
-                              {persona.apellido_nombre}
-                            </p>
-                            {(persona.cantidad_decos || 0) > 1 && (
-                              <Badge
-                                variant="outline"
-                                className="text-blue-600 border-blue-200 bg-blue-50 text-xs"
-                              >
-                                {persona.cantidad_decos} decos
-                              </Badge>
-                            )}
-                            {persona.decodificador_devuelto && (
-                              <Badge
-                                variant="outline"
-                                className="text-green-600 border-green-200 bg-green-50"
-                              >
-                                <Package className="h-3 w-3 mr-1" />
-                                Devuelto
-                              </Badge>
-                            )}
-                          </div>
-                          <p className="text-sm text-muted-foreground">
-                            {persona.telefono_principal}
-                          </p>
-                          {persona.punto_pickit && (
-                            <p className="text-xs text-muted-foreground mt-1">
-                              Más cercano: {persona.punto_pickit.nombre} (
-                              {Math.round(persona.distancia_metros || 0)}m)
-                            </p>
-                          )}
-                        </div>
-                      </div>
-                      <div className="text-right">
-                        <Badge
-                          variant="outline"
-                          className="text-red-600 border-red-200"
+                      <Download className="mr-2 h-4 w-4" />
+                      Exportar
+                    </Button>
+                  </div>
+                  <CardDescription>
+                    Personas confirmadas con fecha de compromiso. Aparecen en
+                    archivo diario Pickit en el corte del día del compromiso
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  {personas.comprometidos.length > 0 ? (
+                    <PersonaList
+                      personas={personas.comprometidos}
+                      puntosPickit={puntosPickit}
+                      renderItem={(persona) => (
+                        <div
+                          key={persona.id}
+                          className="flex items-center justify-between p-3 border border-border rounded-lg hover:bg-muted/50 bg-green-50/50"
                         >
-                          {Math.round(persona.distancia_metros || 0)}m
-                        </Badge>
-                        <p className="text-xs text-muted-foreground mt-1">
-                          Fuera de rango
-                        </p>
-                      </div>
-                    </div>
-                  )}
-                />
-              ) : (
-                <p className="text-sm text-muted-foreground text-center py-4">
-                  Todas las personas están dentro del rango
-                </p>
-              )}
-            </CardContent>
-          </Card>
-
-          {/* Bucket 4: Sin WhatsApp - PRD */}
-          <Card>
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <AlertCircle className="h-5 w-5 text-yellow-600" />
-                  <CardTitle>Sin WhatsApp Válido</CardTitle>
-                  <Badge variant="secondary">
-                    {personas.sinWhatsapp.length}
-                  </Badge>
-                </div>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() =>
-                    handleExportBucket("SinWhatsapp", personas.sinWhatsapp)
-                  }
-                  disabled={personas.sinWhatsapp.length === 0}
-                >
-                  <Download className="mr-2 h-4 w-4" />
-                  Exportar
-                </Button>
-              </div>
-              <CardDescription>
-                Detectado por validación Kapso o error en envío
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              {personas.sinWhatsapp.length > 0 ? (
-                <PersonaList
-                  personas={personas.sinWhatsapp}
-                  puntosPickit={puntosPickit}
-                  renderItem={(persona) => (
-                    <div
-                      key={persona.id}
-                      className="flex items-center justify-between p-3 border border-border rounded-lg hover:bg-muted/50 bg-yellow-50/50"
-                    >
-                      <div className="flex items-center gap-3 flex-1">
-                        <Checkbox
-                          checked={persona.decodificador_devuelto}
-                          onCheckedChange={() =>
-                            handleToggleDevolucion(
-                              persona.id,
-                              persona.decodificador_devuelto
-                            )
-                          }
-                          className="shrink-0"
-                        />
-                        <div className="flex-1">
-                          <div className="flex items-center gap-2">
-                            <p className="font-medium">
-                              {persona.apellido_nombre}
-                            </p>
-                            {(persona.cantidad_decos || 0) > 1 && (
-                              <Badge
-                                variant="outline"
-                                className="text-blue-600 border-blue-200 bg-blue-50 text-xs"
-                              >
-                                {persona.cantidad_decos} decos
-                              </Badge>
-                            )}
-                            {persona.decodificador_devuelto && (
-                              <Badge
-                                variant="outline"
-                                className="text-green-600 border-green-200 bg-green-50"
-                              >
-                                <Package className="h-3 w-3 mr-1" />
-                                Devuelto
-                              </Badge>
+                          <div className="flex items-center gap-3 flex-1">
+                            <Checkbox
+                              checked={persona.decodificador_devuelto}
+                              onCheckedChange={() =>
+                                handleToggleDevolucion(
+                                  persona.id,
+                                  persona.decodificador_devuelto
+                                )
+                              }
+                              className="shrink-0"
+                            />
+                            <div className="flex-1">
+                              <div className="flex items-center gap-2">
+                                <p className="font-medium">
+                                  {persona.apellido_nombre}
+                                </p>
+                                {(persona.cantidad_decos || 0) > 1 && (
+                                  <Badge
+                                    variant="outline"
+                                    className="text-blue-600 border-blue-200 bg-blue-50 text-xs"
+                                  >
+                                    {persona.cantidad_decos} decos
+                                  </Badge>
+                                )}
+                                {persona.decodificador_devuelto && (
+                                  <Badge
+                                    variant="outline"
+                                    className="text-green-600 border-green-200 bg-green-50"
+                                  >
+                                    <Package className="h-3 w-3 mr-1" />
+                                    Devuelto
+                                  </Badge>
+                                )}
+                              </div>
+                              <p className="text-sm text-muted-foreground">
+                                {persona.telefono_principal}
+                              </p>
+                              <p className="text-sm font-semibold text-green-700 mt-1">
+                                Comprometido:{" "}
+                                {persona.fecha_compromiso
+                                  ? formatIsoDateToDmy(persona.fecha_compromiso)
+                                  : "Sin fecha"}
+                              </p>
+                              {persona.punto_pickit && (
+                                <p className="text-xs text-muted-foreground mt-1">
+                                  {persona.punto_pickit.nombre}
+                                </p>
+                              )}
+                            </div>
+                          </div>
+                          <div className="text-right text-sm text-muted-foreground">
+                            {persona.fecha_respuesta && (
+                              <p>
+                                Confirmó:{" "}
+                                {new Date(
+                                  persona.fecha_respuesta
+                                ).toLocaleDateString("es-AR")}
+                              </p>
                             )}
                           </div>
-                          <p className="text-sm text-muted-foreground">
-                            {persona.telefono_principal}
-                          </p>
-                          <p className="text-xs text-yellow-700 mt-1">
-                            {persona.error_envio_kapso ||
-                              "Número inválido o sin WhatsApp"}
-                          </p>
                         </div>
-                      </div>
-                      <div className="text-right text-sm text-muted-foreground">
-                        <Badge
-                          variant="outline"
-                          className="text-yellow-600 border-yellow-200"
+                      )}
+                    />
+                  ) : (
+                    <p className="text-sm text-muted-foreground text-center py-4">
+                      No hay compromisos aún
+                    </p>
+                  )}
+                </CardContent>
+              </Card>
+
+              {/* Bucket 2: In Progress - PRD */}
+              <Card>
+                <CardHeader>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Clock className="h-5 w-5 text-orange-600" />
+                      <CardTitle>In Progress / Contactados</CardTitle>
+                      <Badge variant="secondary">
+                        {personas.inProgress.length}
+                      </Badge>
+                    </div>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() =>
+                        handleExportBucket("InProgress", personas.inProgress)
+                      }
+                      disabled={personas.inProgress.length === 0}
+                    >
+                      <Download className="mr-2 h-4 w-4" />
+                      Exportar
+                    </Button>
+                  </div>
+                  <CardDescription>
+                    Conversación activa: encolado, enviado WhatsApp, o respondió
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  {personas.inProgress.length > 0 ? (
+                    <PersonaList
+                      personas={personas.inProgress}
+                      puntosPickit={puntosPickit}
+                      renderItem={(persona) => (
+                        <div
+                          key={persona.id}
+                          className="flex items-center justify-between p-3 border border-border rounded-lg hover:bg-muted/50"
                         >
-                          Sin WhatsApp
-                        </Badge>
-                      </div>
-                    </div>
-                  )}
-                />
-              ) : (
-                <p className="text-sm text-muted-foreground text-center py-4">
-                  Todos los números tienen WhatsApp válido
-                </p>
-              )}
-            </CardContent>
-          </Card>
-
-          {/* Bucket 5: Atención Especial - PRD */}
-          <Card>
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <AlertCircle className="h-5 w-5 text-purple-600" />
-                  <CardTitle>Atención Especial</CardTitle>
-                  <Badge variant="secondary">
-                    {personas.atencionEspecial.length}
-                  </Badge>
-                </div>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() =>
-                    handleExportBucket(
-                      "AtencionEspecial",
-                      personas.atencionEspecial
-                    )
-                  }
-                  disabled={personas.atencionEspecial.length === 0}
-                >
-                  <Download className="mr-2 h-4 w-4" />
-                  Exportar
-                </Button>
-              </div>
-              <CardDescription>
-                Rechazados o solicita retiro domicilio. Motivo negativo generado
-                por agente Kapso
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              {personas.atencionEspecial.length > 0 ? (
-                <PersonaList
-                  personas={personas.atencionEspecial}
-                  puntosPickit={puntosPickit}
-                  renderItem={(persona) => (
-                    <div
-                      key={persona.id}
-                      className="flex items-center justify-between p-3 border border-border rounded-lg hover:bg-muted/50 bg-purple-50/50"
-                    >
-                      <div className="flex items-center gap-3 flex-1">
-                        <Checkbox
-                          checked={persona.decodificador_devuelto}
-                          onCheckedChange={() =>
-                            handleToggleDevolucion(
-                              persona.id,
-                              persona.decodificador_devuelto
-                            )
-                          }
-                          className="shrink-0"
-                        />
-                        <div className="flex-1">
-                          <div className="flex items-center gap-2">
-                            <p className="font-medium">
-                              {persona.apellido_nombre}
-                            </p>
-                            {(persona.cantidad_decos || 0) > 1 && (
-                              <Badge
-                                variant="outline"
-                                className="text-blue-600 border-blue-200 bg-blue-50 text-xs"
-                              >
-                                {persona.cantidad_decos} decos
-                              </Badge>
-                            )}
-                            {persona.solicita_retiro_domicilio && (
-                              <Badge
-                                variant="outline"
-                                className="text-purple-600 border-purple-200 bg-purple-50"
-                              >
-                                Retiro Domicilio
-                              </Badge>
-                            )}
-                            {persona.decodificador_devuelto && (
-                              <Badge
-                                variant="outline"
-                                className="text-green-600 border-green-200 bg-green-50"
-                              >
-                                <Package className="h-3 w-3 mr-1" />
-                                Devuelto
-                              </Badge>
+                          <div className="flex items-center gap-3 flex-1">
+                            <Checkbox
+                              checked={persona.decodificador_devuelto}
+                              onCheckedChange={() =>
+                                handleToggleDevolucion(
+                                  persona.id,
+                                  persona.decodificador_devuelto
+                                )
+                              }
+                              className="shrink-0"
+                            />
+                            <div className="flex-1">
+                              <div className="flex items-center gap-2">
+                                <p className="font-medium">
+                                  {persona.apellido_nombre}
+                                </p>
+                                {(persona.cantidad_decos || 0) > 1 && (
+                                  <Badge
+                                    variant="outline"
+                                    className="text-blue-600 border-blue-200 bg-blue-50 text-xs"
+                                  >
+                                    {persona.cantidad_decos} decos
+                                  </Badge>
+                                )}
+                                {persona.decodificador_devuelto && (
+                                  <Badge
+                                    variant="outline"
+                                    className="text-green-600 border-green-200 bg-green-50"
+                                  >
+                                    <Package className="h-3 w-3 mr-1" />
+                                    Devuelto
+                                  </Badge>
+                                )}
+                              </div>
+                              <p className="text-sm text-muted-foreground">
+                                {persona.telefono_principal}
+                              </p>
+                              {persona.respuesta_texto && (
+                                <p className="text-sm text-orange-700 mt-1 italic">
+                                  "{persona.respuesta_texto}"
+                                </p>
+                              )}
+                            </div>
+                          </div>
+                          <div className="text-right">
+                            <Badge variant="outline" className="capitalize">
+                              {persona.estado_contacto === "encolado" &&
+                                "Encolado"}
+                              {persona.estado_contacto === "enviado_whatsapp" &&
+                                "Enviado"}
+                              {persona.estado_contacto === "respondio" &&
+                                "Respondió"}
+                              {persona.estado_contacto === "pendiente" &&
+                                "Pendiente"}
+                            </Badge>
+                            {persona.fecha_envio_whatsapp && (
+                              <p className="text-xs text-muted-foreground mt-1">
+                                {new Date(
+                                  persona.fecha_envio_whatsapp
+                                ).toLocaleDateString("es-AR")}
+                              </p>
                             )}
                           </div>
-                          <p className="text-sm text-muted-foreground">
-                            {persona.telefono_principal}
-                          </p>
-                          {persona.motivo_negativo && (
-                            <p className="text-sm font-semibold text-purple-700 mt-1">
-                              Motivo: {persona.motivo_negativo}
-                            </p>
-                          )}
-                          {persona.respuesta_texto && (
-                            <p className="text-sm text-purple-600 mt-1 italic">
-                              "{persona.respuesta_texto}"
-                            </p>
-                          )}
                         </div>
-                      </div>
-                      <div className="text-right text-sm text-muted-foreground">
-                        {persona.estado_contacto === "rechazado" && (
-                          <Badge
-                            variant="outline"
-                            className="text-red-600 border-red-200"
-                          >
-                            Rechazado
-                          </Badge>
-                        )}
-                        {persona.fecha_respuesta && (
-                          <p className="text-xs mt-1">
-                            {new Date(
-                              persona.fecha_respuesta
-                            ).toLocaleDateString("es-AR")}
-                          </p>
-                        )}
-                      </div>
-                    </div>
+                      )}
+                    />
+                  ) : (
+                    <p className="text-sm text-muted-foreground text-center py-4">
+                      No hay personas en progreso
+                    </p>
                   )}
-                />
-              ) : (
-                <p className="text-sm text-muted-foreground text-center py-4">
-                  No hay casos que requieran atención especial
-                </p>
-              )}
-            </CardContent>
-          </Card>
+                </CardContent>
+              </Card>
+
+              {/* Bucket 3: Fuera de Rango - PRD */}
+              <Card>
+                <CardHeader>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <XCircle className="h-5 w-5 text-red-600" />
+                      <CardTitle>Fuera de Rango</CardTitle>
+                      <Badge variant="secondary">
+                        {personas.fueraDeRango.length}
+                      </Badge>
+                    </div>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() =>
+                        handleExportBucket(
+                          "FueraDeRango",
+                          personas.fueraDeRango
+                        )
+                      }
+                      disabled={personas.fueraDeRango.length === 0}
+                    >
+                      <Download className="mr-2 h-4 w-4" />
+                      Exportar
+                    </Button>
+                  </div>
+                  <CardDescription>
+                    Distancia mayor a {campaign?.distancia_max || 2000}m. Export
+                    generado al crear campaña
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  {personas.fueraDeRango.length > 0 ? (
+                    <PersonaList
+                      personas={personas.fueraDeRango}
+                      puntosPickit={puntosPickit}
+                      renderItem={(persona) => (
+                        <div
+                          key={persona.id}
+                          className="flex items-center justify-between p-3 border border-border rounded-lg hover:bg-muted/50"
+                        >
+                          <div className="flex items-center gap-3 flex-1">
+                            <Checkbox
+                              checked={persona.decodificador_devuelto}
+                              onCheckedChange={() =>
+                                handleToggleDevolucion(
+                                  persona.id,
+                                  persona.decodificador_devuelto
+                                )
+                              }
+                              className="shrink-0"
+                            />
+                            <div className="flex-1">
+                              <div className="flex items-center gap-2">
+                                <p className="font-medium">
+                                  {persona.apellido_nombre}
+                                </p>
+                                {(persona.cantidad_decos || 0) > 1 && (
+                                  <Badge
+                                    variant="outline"
+                                    className="text-blue-600 border-blue-200 bg-blue-50 text-xs"
+                                  >
+                                    {persona.cantidad_decos} decos
+                                  </Badge>
+                                )}
+                                {persona.decodificador_devuelto && (
+                                  <Badge
+                                    variant="outline"
+                                    className="text-green-600 border-green-200 bg-green-50"
+                                  >
+                                    <Package className="h-3 w-3 mr-1" />
+                                    Devuelto
+                                  </Badge>
+                                )}
+                              </div>
+                              <p className="text-sm text-muted-foreground">
+                                {persona.telefono_principal}
+                              </p>
+                              {persona.punto_pickit && (
+                                <p className="text-xs text-muted-foreground mt-1">
+                                  Más cercano: {persona.punto_pickit.nombre} (
+                                  {Math.round(persona.distancia_metros || 0)}m)
+                                </p>
+                              )}
+                            </div>
+                          </div>
+                          <div className="text-right">
+                            <Badge
+                              variant="outline"
+                              className="text-red-600 border-red-200"
+                            >
+                              {Math.round(persona.distancia_metros || 0)}m
+                            </Badge>
+                            <p className="text-xs text-muted-foreground mt-1">
+                              Fuera de rango
+                            </p>
+                          </div>
+                        </div>
+                      )}
+                    />
+                  ) : (
+                    <p className="text-sm text-muted-foreground text-center py-4">
+                      Todas las personas están dentro del rango
+                    </p>
+                  )}
+                </CardContent>
+              </Card>
+
+              {/* Bucket 4: Sin WhatsApp - PRD */}
+              <Card>
+                <CardHeader>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <AlertCircle className="h-5 w-5 text-yellow-600" />
+                      <CardTitle>Sin WhatsApp Válido</CardTitle>
+                      <Badge variant="secondary">
+                        {personas.sinWhatsapp.length}
+                      </Badge>
+                    </div>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() =>
+                        handleExportBucket("SinWhatsapp", personas.sinWhatsapp)
+                      }
+                      disabled={personas.sinWhatsapp.length === 0}
+                    >
+                      <Download className="mr-2 h-4 w-4" />
+                      Exportar
+                    </Button>
+                  </div>
+                  <CardDescription>
+                    Detectado por validación Kapso o error en envío
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  {personas.sinWhatsapp.length > 0 ? (
+                    <PersonaList
+                      personas={personas.sinWhatsapp}
+                      puntosPickit={puntosPickit}
+                      renderItem={(persona) => (
+                        <div
+                          key={persona.id}
+                          className="flex items-center justify-between p-3 border border-border rounded-lg hover:bg-muted/50 bg-yellow-50/50"
+                        >
+                          <div className="flex items-center gap-3 flex-1">
+                            <Checkbox
+                              checked={persona.decodificador_devuelto}
+                              onCheckedChange={() =>
+                                handleToggleDevolucion(
+                                  persona.id,
+                                  persona.decodificador_devuelto
+                                )
+                              }
+                              className="shrink-0"
+                            />
+                            <div className="flex-1">
+                              <div className="flex items-center gap-2">
+                                <p className="font-medium">
+                                  {persona.apellido_nombre}
+                                </p>
+                                {(persona.cantidad_decos || 0) > 1 && (
+                                  <Badge
+                                    variant="outline"
+                                    className="text-blue-600 border-blue-200 bg-blue-50 text-xs"
+                                  >
+                                    {persona.cantidad_decos} decos
+                                  </Badge>
+                                )}
+                                {persona.decodificador_devuelto && (
+                                  <Badge
+                                    variant="outline"
+                                    className="text-green-600 border-green-200 bg-green-50"
+                                  >
+                                    <Package className="h-3 w-3 mr-1" />
+                                    Devuelto
+                                  </Badge>
+                                )}
+                              </div>
+                              <p className="text-sm text-muted-foreground">
+                                {persona.telefono_principal}
+                              </p>
+                              <p className="text-xs text-yellow-700 mt-1">
+                                {persona.error_envio_kapso ||
+                                  "Número inválido o sin WhatsApp"}
+                              </p>
+                            </div>
+                          </div>
+                          <div className="text-right text-sm text-muted-foreground">
+                            <Badge
+                              variant="outline"
+                              className="text-yellow-600 border-yellow-200"
+                            >
+                              Sin WhatsApp
+                            </Badge>
+                          </div>
+                        </div>
+                      )}
+                    />
+                  ) : (
+                    <p className="text-sm text-muted-foreground text-center py-4">
+                      Todos los números tienen WhatsApp válido
+                    </p>
+                  )}
+                </CardContent>
+              </Card>
+
+              {/* Bucket 5: Atención Especial - PRD */}
+              <Card>
+                <CardHeader>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <AlertCircle className="h-5 w-5 text-purple-600" />
+                      <CardTitle>Atención Especial</CardTitle>
+                      <Badge variant="secondary">
+                        {personas.atencionEspecial.length}
+                      </Badge>
+                    </div>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() =>
+                        handleExportBucket(
+                          "AtencionEspecial",
+                          personas.atencionEspecial
+                        )
+                      }
+                      disabled={personas.atencionEspecial.length === 0}
+                    >
+                      <Download className="mr-2 h-4 w-4" />
+                      Exportar
+                    </Button>
+                  </div>
+                  <CardDescription>
+                    Rechazados o solicita retiro domicilio. Motivo negativo
+                    generado por agente Kapso
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  {personas.atencionEspecial.length > 0 ? (
+                    <PersonaList
+                      personas={personas.atencionEspecial}
+                      puntosPickit={puntosPickit}
+                      renderItem={(persona) => (
+                        <div
+                          key={persona.id}
+                          className="flex items-center justify-between p-3 border border-border rounded-lg hover:bg-muted/50 bg-purple-50/50"
+                        >
+                          <div className="flex items-center gap-3 flex-1">
+                            <Checkbox
+                              checked={persona.decodificador_devuelto}
+                              onCheckedChange={() =>
+                                handleToggleDevolucion(
+                                  persona.id,
+                                  persona.decodificador_devuelto
+                                )
+                              }
+                              className="shrink-0"
+                            />
+                            <div className="flex-1">
+                              <div className="flex items-center gap-2">
+                                <p className="font-medium">
+                                  {persona.apellido_nombre}
+                                </p>
+                                {(persona.cantidad_decos || 0) > 1 && (
+                                  <Badge
+                                    variant="outline"
+                                    className="text-blue-600 border-blue-200 bg-blue-50 text-xs"
+                                  >
+                                    {persona.cantidad_decos} decos
+                                  </Badge>
+                                )}
+                                {persona.solicita_retiro_domicilio && (
+                                  <Badge
+                                    variant="outline"
+                                    className="text-purple-600 border-purple-200 bg-purple-50"
+                                  >
+                                    Retiro Domicilio
+                                  </Badge>
+                                )}
+                                {persona.decodificador_devuelto && (
+                                  <Badge
+                                    variant="outline"
+                                    className="text-green-600 border-green-200 bg-green-50"
+                                  >
+                                    <Package className="h-3 w-3 mr-1" />
+                                    Devuelto
+                                  </Badge>
+                                )}
+                              </div>
+                              <p className="text-sm text-muted-foreground">
+                                {persona.telefono_principal}
+                              </p>
+                              {persona.motivo_negativo && (
+                                <p className="text-sm font-semibold text-purple-700 mt-1">
+                                  Motivo: {persona.motivo_negativo}
+                                </p>
+                              )}
+                              {persona.respuesta_texto && (
+                                <p className="text-sm text-purple-600 mt-1 italic">
+                                  "{persona.respuesta_texto}"
+                                </p>
+                              )}
+                            </div>
+                          </div>
+                          <div className="text-right text-sm text-muted-foreground">
+                            {persona.estado_contacto === "rechazado" && (
+                              <Badge
+                                variant="outline"
+                                className="text-red-600 border-red-200"
+                              >
+                                Rechazado
+                              </Badge>
+                            )}
+                            {persona.fecha_respuesta && (
+                              <p className="text-xs mt-1">
+                                {new Date(
+                                  persona.fecha_respuesta
+                                ).toLocaleDateString("es-AR")}
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                      )}
+                    />
+                  ) : (
+                    <p className="text-sm text-muted-foreground text-center py-4">
+                      No hay casos que requieran atención especial
+                    </p>
+                  )}
+                </CardContent>
+              </Card>
             </div>
           </TabsContent>
 
