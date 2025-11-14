@@ -107,15 +107,6 @@ function estaEntreHoras(
   return actualMinutos >= inicioMinutos && actualMinutos < finMinutos;
 }
 
-/**
- * Valida que no sea el mismo día de creación de campaña
- * Según PRD: primer contacto siempre día hábil siguiente
- */
-function esMismoDiaCreacion(campanaCreatedAt, timeInfo) {
-  const fechaCreacion = new Date(campanaCreatedAt).toISOString().split("T")[0];
-  return fechaCreacion === timeInfo.fecha;
-}
-
 async function consultarSupabase(env, query) {
   const url = `${env.SUPABASE_URL}/rest/v1/${query.table}`;
   const params = new URLSearchParams(query.params || {});
@@ -338,16 +329,6 @@ async function procesarCampana(env, campanaId, esManual = true) {
         log.resultado = "fecha_fin_contactacion_pasada";
         return log;
       }
-    }
-
-    // Validar que no sea mismo día de creación (solo para envío manual)
-    if (esManual && esMismoDiaCreacion(campana.created_at, timeInfo)) {
-      log.pasos.push({
-        paso: 2,
-        resultado: "mismo día de creación, no se contacta",
-      });
-      log.resultado = "mismo_dia_creacion";
-      return log;
     }
 
     // Validar horario (solo para envío manual)
