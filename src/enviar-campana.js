@@ -185,13 +185,9 @@ async function enviarKapsoWorkflow(
 
     // Construir variables según PRD
     const cantidadDecos = persona.cantidad_decos || 1;
-    const nrosCliente =
-      persona.nros_cliente ||
-      (persona.nro_cliente ? [persona.nro_cliente] : []);
     const nrosWO = persona.nros_wo || (persona.nro_wo ? [persona.nro_wo] : []);
     const textoDeco =
       cantidadDecos === 1 ? "el decodificador" : "los decodificadores";
-    const nrosClienteStr = nrosCliente.join(", ");
     const nrosWOStr = nrosWO.join(", ");
 
     // Payload según PRD
@@ -401,75 +397,56 @@ async function procesarCampana(env, campanaId, esManual = true) {
       return log;
     }
 
-    // Procesar en batches
+    // Procesar todos juntos (sin batches)
     log.pasos.push({ paso: 4, accion: "iniciando envío de mensajes" });
     const resultados = [];
     const errores = [];
 
-    for (let i = 0; i < personas.length; i += BATCH_SIZE) {
-      const batch = personas.slice(i, i + BATCH_SIZE);
-      const batchNum = Math.floor(i / BATCH_SIZE) + 1;
-      const totalBatches = Math.ceil(personas.length / BATCH_SIZE);
+    const promesas = personas.map(async (persona) => {
+      try {
+        await enviarKapsoWorkflow(persona, campana, env, false);
 
-      log.pasos.push({
-        paso: `4.${batchNum}`,
-        accion: `procesando batch ${batchNum}/${totalBatches}`,
-        personas_en_batch: batch.length,
-      });
-
-      // Procesar batch en paralelo
-      const promesas = batch.map(async (persona) => {
-        try {
-          await enviarKapsoWorkflow(persona, campana, env, false);
-
-          await actualizarSupabase(
-            env,
-            "personas_contactar",
-            {
-              estado_contacto: "enviado_whatsapp",
-              fecha_envio_whatsapp: new Date().toISOString(),
-              intentos_envio: (persona.intentos_envio || 0) + 1,
-            },
-            new URLSearchParams({ id: `eq.${persona.id}` })
-          );
-
-          return { success: true, persona_id: persona.id };
-        } catch (error) {
-          await actualizarSupabase(
-            env,
-            "personas_contactar",
-            {
-              estado_contacto: "error_envio",
-              intentos_envio: (persona.intentos_envio || 0) + 1,
-            },
-            new URLSearchParams({ id: `eq.${persona.id}` })
-          );
-
-          return {
-            success: false,
-            persona_id: persona.id,
-            error: error.message,
-          };
-        }
-      });
-
-      const resultadosBatch = await Promise.all(promesas);
-
-      resultadosBatch.forEach((r) => {
-        if (r.success) {
-          resultados.push(r);
-        } else {
-          errores.push(r);
-        }
-      });
-
-      // Delay entre batches
-      if (i + BATCH_SIZE < personas.length) {
-        await new Promise((resolve) =>
-          setTimeout(resolve, DELAY_BETWEEN_BATCHES)
+        await actualizarSupabase(
+          env,
+          "personas_contactar",
+          {
+            estado_contacto: "enviado_whatsapp",
+            fecha_envio_whatsapp: new Date().toISOString(),
+            intentos_envio: (persona.intentos_envio || 0) + 1,
+          },
+          new URLSearchParams({ id: `eq.${persona.id}` })
         );
+
+        return { success: true, persona_id: persona.id };
+      } catch (error) {
+        console.error(error, '< ERROR');
+        await actualizarSupabase(
+          env,
+          "personas_contactar",
+          {
+            estado_contacto: "error_envio",
+            intentos_envio: (persona.intentos_envio || 0) + 1,
+          },
+          new URLSearchParams({ id: `eq.${persona.id}` })
+        );
+
+        return {
+          success: false,
+          persona_id: persona.id,
+          error: error.message,
+        };
       }
-    }
+    });
+
+    const resultadosTodos = await Promise.all(promesas);
+
+    resultadosTodos.forEach((r) => {
+      if (r.success) {
+        resultados.push(r);
+      } else {
+        errores.push(r);
+      }
+    });
 
     // Resumen final
     log.resultado = "completado";

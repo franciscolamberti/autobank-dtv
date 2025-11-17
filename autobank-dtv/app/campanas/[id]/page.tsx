@@ -21,6 +21,7 @@ import {
   Download,
   FileText,
   Package,
+  Hash,
 } from "lucide-react";
 import Link from "next/link";
 import { redirect, useParams } from "next/navigation";
@@ -691,6 +692,15 @@ export default function CampaignDetailPage() {
                                     {persona.cantidad_decos} decos
                                   </Badge>
                                 )}
+                                {persona.nro_cliente && (
+                                  <Badge
+                                    variant="outline"
+                                    className="text-slate-700 border-slate-200 bg-slate-50 text-xs"
+                                  >
+                                    <Hash className="h-3 w-3 mr-1" />
+                                    Cliente {persona.nro_cliente}
+                                  </Badge>
+                                )}
                                 {persona.decodificador_devuelto && (
                                   <Badge
                                     variant="outline"
@@ -797,6 +807,15 @@ export default function CampaignDetailPage() {
                                     className="text-blue-600 border-blue-200 bg-blue-50 text-xs"
                                   >
                                     {persona.cantidad_decos} decos
+                                  </Badge>
+                                )}
+                                {persona.nro_cliente && (
+                                  <Badge
+                                    variant="outline"
+                                    className="text-slate-700 border-slate-200 bg-slate-50 text-xs"
+                                  >
+                                    <Hash className="h-3 w-3 mr-1" />
+                                    Cliente {persona.nro_cliente}
                                   </Badge>
                                 )}
                                 {persona.decodificador_devuelto && (
@@ -914,6 +933,15 @@ export default function CampaignDetailPage() {
                                     {persona.cantidad_decos} decos
                                   </Badge>
                                 )}
+                                {persona.nro_cliente && (
+                                  <Badge
+                                    variant="outline"
+                                    className="text-slate-700 border-slate-200 bg-slate-50 text-xs"
+                                  >
+                                    <Hash className="h-3 w-3 mr-1" />
+                                    Cliente {persona.nro_cliente}
+                                  </Badge>
+                                )}
                                 {persona.decodificador_devuelto && (
                                   <Badge
                                     variant="outline"
@@ -1018,6 +1046,15 @@ export default function CampaignDetailPage() {
                                     {persona.cantidad_decos} decos
                                   </Badge>
                                 )}
+                                {persona.nro_cliente && (
+                                  <Badge
+                                    variant="outline"
+                                    className="text-slate-700 border-slate-200 bg-slate-50 text-xs"
+                                  >
+                                    <Hash className="h-3 w-3 mr-1" />
+                                    Cliente {persona.nro_cliente}
+                                  </Badge>
+                                )}
                                 {persona.decodificador_devuelto && (
                                   <Badge
                                     variant="outline"
@@ -1119,6 +1156,15 @@ export default function CampaignDetailPage() {
                                     className="text-blue-600 border-blue-200 bg-blue-50 text-xs"
                                   >
                                     {persona.cantidad_decos} decos
+                                  </Badge>
+                                )}
+                                {persona.nro_cliente && (
+                                  <Badge
+                                    variant="outline"
+                                    className="text-slate-700 border-slate-200 bg-slate-50 text-xs"
+                                  >
+                                    <Hash className="h-3 w-3 mr-1" />
+                                    Cliente {persona.nro_cliente}
                                   </Badge>
                                 )}
                                 {persona.solicita_retiro_domicilio && (
