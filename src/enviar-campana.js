@@ -168,7 +168,6 @@ async function enviarKapsoWorkflow(
   env,
   esRecordatorio = false
 ) {
-  console.log("ENTRO ACA")
   try {
     if (DRY_RUN) {
       console.log("[DRY_RUN] Simulando envío a Kapso:", {
@@ -181,7 +180,8 @@ async function enviarKapsoWorkflow(
       return { success: true, simulated: true };
     }
 
-    const url = 'https://api.kapso.ai/platform/v1/workflows/3af75433-75f6-4a07-9ebc-90d161d29d32/executions';
+    const url =
+      "https://api.kapso.ai/platform/v1/workflows/3af75433-75f6-4a07-9ebc-90d161d29d32/executions";
 
     // Construir variables según PRD
     const cantidadDecos = persona.cantidad_decos || 1;
@@ -218,6 +218,7 @@ async function enviarKapsoWorkflow(
               direccion_punto: persona.puntos_pickit?.direccion || "N/A",
               distancia: `${Math.round(persona.distancia_metros)} metros`,
               persona_id: persona.id,
+              horarios_punto: persona.puntos_pickit?.horario || "N/A",
             },
         context: {
           source: esRecordatorio
@@ -228,7 +229,6 @@ async function enviarKapsoWorkflow(
         },
       },
     };
-
 
     const response = await fetch(url, {
       method: "POST",
@@ -389,7 +389,6 @@ async function procesarCampana(env, campanaId, esManual = true) {
       params: queryParams,
     });
 
-    console.log({ personas, queryParams }, '< ACA');
 
     log.pasos.push({
       paso: 3,

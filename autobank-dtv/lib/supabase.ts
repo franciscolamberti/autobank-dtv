@@ -335,6 +335,7 @@ export type Database = {
           created_at: string | null
           direccion: string
           external_id: number
+          horario: string | null
           id: string
           lat: number
           lon: number
@@ -344,6 +345,7 @@ export type Database = {
           created_at?: string | null
           direccion: string
           external_id: number
+          horario?: string | null
           id?: string
           lat: number
           lon: number
@@ -353,6 +355,7 @@ export type Database = {
           created_at?: string | null
           direccion?: string
           external_id?: number
+          horario?: string | null
           id?: string
           lat?: number
           lon?: number
