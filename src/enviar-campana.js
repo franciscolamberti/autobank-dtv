@@ -211,7 +211,7 @@ async function enviarKapsoWorkflow(
           : {
               nombre_cliente: persona.apellido_nombre,
               nro_cliente: persona.nro_cliente || "",
-              nros_cliente: nrosClienteStr,
+              nros_cliente: nrosWOStr,
               cantidad_decos: cantidadDecos,
               texto_deco: textoDeco,
               punto_pickit: persona.puntos_pickit?.nombre || "N/A",
