@@ -193,11 +193,27 @@ export default function CampaignDetailPage() {
         };
 
         // Bucket 1: Comprometidos - estado_contacto = confirmado Y tiene fecha_compromiso
+        // Bucket 1: Comprometidos
         if (
           personaNormalizada.estado_contacto === "confirmado" &&
           personaNormalizada.fecha_compromiso
         ) {
           sections.comprometidos.push(personaNormalizada);
+        }
+        // Bucket 5: Atención especial - rechazado OR solicita_retiro_domicilio
+        else if (
+          personaNormalizada.estado_contacto === "rechazado" ||
+          personaNormalizada.solicita_retiro_domicilio
+        ) {
+          sections.atencionEspecial.push(personaNormalizada);
+        }
+        // Bucket 3: Fuera de rango
+        else if (personaNormalizada.fuera_de_rango) {
+          sections.fueraDeRango.push(personaNormalizada);
+        }
+        // Bucket 4: Sin WhatsApp
+        else if (personaNormalizada.tiene_whatsapp === false) {
+          sections.sinWhatsapp.push(personaNormalizada);
         }
         // Bucket 2: In Progress - encolado, enviado_whatsapp, respondio
         else if (
@@ -207,22 +223,7 @@ export default function CampaignDetailPage() {
         ) {
           sections.inProgress.push(personaNormalizada);
         }
-        // Bucket 3: Fuera de rango - fuera_de_rango = true
-        else if (personaNormalizada.fuera_de_rango) {
-          sections.fueraDeRango.push(personaNormalizada);
-        }
-        // Bucket 4: Sin WhatsApp - tiene_whatsapp = false
-        else if (personaNormalizada.tiene_whatsapp === false) {
-          sections.sinWhatsapp.push(personaNormalizada);
-        }
-        // Bucket 5: Atención especial - rechazado OR solicita_retiro_domicilio
-        else if (
-          personaNormalizada.estado_contacto === "rechazado" ||
-          personaNormalizada.solicita_retiro_domicilio
-        ) {
-          sections.atencionEspecial.push(personaNormalizada);
-        }
-        // Personas pendientes sin categoría específica van a inProgress
+        // Pendiente → In Progress
         else if (personaNormalizada.estado_contacto === "pendiente") {
           sections.inProgress.push(personaNormalizada);
         }
