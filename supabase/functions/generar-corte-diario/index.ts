@@ -196,8 +196,6 @@ Deno.serve(async (req) => {
         campana_id,
         file_name: fileName,
         file_path: uploadData.path,
-        total_files: filasExcel.length,
-        total_personas: personas.length,
       });
 
     if (corteInsertError) {

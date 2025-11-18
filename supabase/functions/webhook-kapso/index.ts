@@ -164,30 +164,7 @@ function parsearRespuesta(
       solicitaRetiro: variables.solicita_retiro_domicilio === true
     }
   }
-  
-  // Fallback: heurística de keywords solo si no hay variables estructuradas
-  if (lastUserMessage) {
-    const mensajeLower = lastUserMessage.toLowerCase()
-    
-    const confirmacionKeywords = ['si', 'sí', 'confirmo', 'acepto', 'ok', 'dale', 'genial', 'perfecto', 'voy', 'confirmado']
-    const rechazoKeywords = ['no', 'rechaz', 'cancel', 'imposible', 'no puedo', 'no voy', 'no tengo', 'robado', 'perdido']
-    
-    if (confirmacionKeywords.some(keyword => mensajeLower.includes(keyword))) {
-      return {
-        estado: 'confirmado',
-        fechaCompromiso: null,
-        motivoNegativo: null,
-        solicitaRetiro: false
-      }
-    } else if (rechazoKeywords.some(keyword => mensajeLower.includes(keyword))) {
-      return {
-        estado: 'rechazado',
-        fechaCompromiso: null,
-        motivoNegativo: lastUserMessage, // Usar mensaje completo como motivo
-        solicitaRetiro: false
-      }
-    }
-  }
+
   
   return {
     estado: 'respondio',

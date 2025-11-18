@@ -1271,13 +1271,6 @@ export default function CampaignDetailPage() {
                           </div>
                           <div>
                             <p className="font-medium">{corte.file_name}</p>
-                            <p className="text-xs text-muted-foreground">
-                              {new Date(corte.created_at).toLocaleString(
-                                "es-AR"
-                              )}{" "}
-                              • {corte.total_filas} filas •{" "}
-                              {corte.total_personas} personas
-                            </p>
                           </div>
                         </div>
                         <Button

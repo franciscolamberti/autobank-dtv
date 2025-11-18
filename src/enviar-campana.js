@@ -180,8 +180,11 @@ async function enviarKapsoWorkflow(
       return { success: true, simulated: true };
     }
 
-    const url =
-      "https://api.kapso.ai/platform/v1/workflows/3af75433-75f6-4a07-9ebc-90d161d29d32/executions";
+    const workflowId = esRecordatorio
+      ? "78b19554-7e2f-4ed7-a229-a59ea6886dbf"
+      : "3af75433-75f6-4a07-9ebc-90d161d29d32";
+
+    const url = `https://api.kapso.ai/platform/v1/workflows/${workflowId}/executions`;
 
     // Construir variables según PRD
     const cantidadDecos = persona.cantidad_decos || 1;
@@ -198,11 +201,12 @@ async function enviarKapsoWorkflow(
           campana.kapso_phone_number_id || env.KAPSO_PHONE_NUMBER_ID,
         variables: esRecordatorio
           ? {
-              nombre_cliente: persona.apellido_nombre,
-              punto_pickit: persona.puntos_pickit?.nombre || "N/A",
-              direccion_punto: persona.puntos_pickit?.direccion || "N/A",
-              nros_wo: nrosWOStr,
-              persona_id: persona.id,
+              nro_orden: nrosWOStr || "",
+              punto_pickit_name: persona.puntos_pickit?.nombre || "N/A",
+              punto_pickit_address: persona.puntos_pickit?.direccion || "N/A",
+              punto_pickit_hours: persona.puntos_pickit?.horario || "N/A",
+              commitment_date: persona.fecha_compromiso || "",
+              decodificador_text: textoDeco,
             }
           : {
               nombre_cliente: persona.apellido_nombre,
@@ -241,11 +245,6 @@ async function enviarKapsoWorkflow(
         .catch(() => ({ error: { message: response.statusText } }));
       const errorMessage = errorData?.error || response.statusText || null;
 
-      // Capturar errores Meta según PRD
-      // code 1357045: recipient not found
-      // code 131026: invalid phone number
-      // code 131047: re-engagement message
-      // Marcar tiene_whatsapp = false
       await actualizarSupabase(
         env,
         "personas_contactar",
@@ -385,7 +384,6 @@ async function procesarCampana(env, campanaId, esManual = true) {
       params: queryParams,
     });
 
-
     log.pasos.push({
       paso: 3,
       resultado: "ok",
@@ -419,7 +417,6 @@ async function procesarCampana(env, campanaId, esManual = true) {
 
         return { success: true, persona_id: persona.id };
       } catch (error) {
-        console.error(error, '< ERROR');
         await actualizarSupabase(
           env,
           "personas_contactar",
@@ -584,7 +581,7 @@ async function procesarRecordatorios(env) {
       if (puntoIds.length > 0) {
         const puntos = await consultarSupabase(env, {
           table: "puntos_pickit",
-          select: "id, nombre, direccion",
+          select: "id, nombre, direccion, horario",
           params: new URLSearchParams({ id: `in.(${puntoIds.join(",")})` }),
         });
         puntosPickit = puntos.reduce((acc, p) => {
@@ -765,40 +762,22 @@ export default {
       return;
     }
 
-    // Recordatorios + contacto inicial a las 09:00 AR
-    // if (horaArgentina === 9) {
-    //   try {
-    //     // 1. Procesar recordatorios (09:00 AR = 12:00 UTC)
-    //     console.log("Procesando recordarios");
-    //     const recordatoriosLog = await procesarRecordatorios(env);
-    //     console.log("Recordatorios:", recordatoriosLog.resultado);
+    if (horaArgentina === 9) {
+      try {
+        console.log("Procesando recordatorios (09:00 AR)...");
+        const resultado = await procesarRecordatorios(env);
+        console.log(
+          "Recordatorios:",
+          resultado.resultado,
+          resultado.resumen || {}
+        );
+      } catch (err) {
+        console.error("error en cron (recordatorios):", err);
+      }
 
-    //     // 2. Procesar contacto inicial (inicio ventana 1 AR)
-    //     console.log("Procesando contacto inicial...");
-    //     const campanas = await consultarSupabase(env, {
-    //       table: "campanas",
-    //       select: "id",
-    //       params: new URLSearchParams({ estado: "eq.activa" }),
-    //     });
+      return;
+    }
 
-    //     console.log(`Encontradas ${campanas.length} campañas activas`);
-
-    //     const resultados = [];
-    //     for (const campana of campanas) {
-    //       const resultado = await procesarCampana(env, campana.id, false);
-    //       resultados.push(resultado);
-    //       console.log(`Campaña ${campana.id} procesada:`, resultado.resultado);
-    //     }
-
-    //     console.log("Cron completado:", {
-    //       total_campanas: campanas.length,
-    //       resultados: resultados.map((r) => ({ resultado: r.resultado })),
-    //     });
-    //   } catch (err) {
-    //     console.error("error en cron:", error);
-    //   }
-    // } else {
-    //   console.log("Fuera de ventanas programadas; no hay tareas.");
-    // }
+    console.log("Fuera de ventanas programadas; no hay tareas.");
   },
 };
