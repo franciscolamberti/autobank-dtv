@@ -2,38 +2,39 @@
 // Receives webhook responses from Kapso API when users respond to WhatsApp messages
 // Según PRD: verificar firma, parsear variables estructuradas, actualizar persona y contadores
 
-import "jsr:@supabase/functions-js/edge-runtime.d.ts"
-import { createClient } from 'jsr:@supabase/supabase-js@2'
+import "jsr:@supabase/functions-js/edge-runtime.d.ts";
+import { createClient } from "jsr:@supabase/supabase-js@2";
 
 const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-}
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers":
+    "authorization, x-client-info, apikey, content-type",
+};
 
 interface KapsoWebhookPayload {
-  tracking_id?: string
-  workflow_id?: string
-  phone_number?: string
-  status?: 'completed' | 'failed' | 'in_progress'
+  tracking_id?: string;
+  workflow_id?: string;
+  phone_number?: string;
+  status?: "completed" | "failed" | "in_progress";
   variables?: {
-    confirmado?: boolean
-    fecha_compromiso?: string // formato YYYY-MM-DD o DD/MM/YYYY
-    motivo_negativo?: string
-    solicita_retiro_domicilio?: boolean
-    [key: string]: any
-  }
+    confirmado?: boolean;
+    fecha_compromiso?: string; // formato YYYY-MM-DD o DD/MM/YYYY
+    motivo_negativo?: string;
+    solicita_retiro_domicilio?: boolean | string;
+    [key: string]: any;
+  };
   context?: {
-    source?: string
-    campana_id?: string
-    persona_id?: string
-  }
+    source?: string;
+    campana_id?: string;
+    persona_id?: string;
+  };
   messages?: Array<{
-    role: 'user' | 'assistant'
-    content: string
-    timestamp: string
-  }>
-  last_user_message?: string
-  metadata?: Record<string, any>
+    role: "user" | "assistant";
+    content: string;
+    timestamp: string;
+  }>;
+  last_user_message?: string;
+  metadata?: Record<string, any>;
 }
 
 /**
@@ -46,48 +47,52 @@ async function verificarFirma(
   secret: string | null
 ): Promise<boolean> {
   if (!signature || !secret) {
-    console.warn('Firma o secreto no proporcionados, rechazando')
-    return false
+    console.warn("Firma o secreto no proporcionados, rechazando");
+    return false;
   }
 
   try {
     // Calcular HMAC SHA-256 del body
-    const encoder = new TextEncoder()
-    const keyData = encoder.encode(secret)
-    const messageData = encoder.encode(body)
-    
+    const encoder = new TextEncoder();
+    const keyData = encoder.encode(secret);
+    const messageData = encoder.encode(body);
+
     const cryptoKey = await crypto.subtle.importKey(
-      'raw',
+      "raw",
       keyData,
-      { name: 'HMAC', hash: 'SHA-256' },
+      { name: "HMAC", hash: "SHA-256" },
       false,
-      ['sign']
-    )
-    
-    const signatureBuffer = await crypto.subtle.sign('HMAC', cryptoKey, messageData)
+      ["sign"]
+    );
+
+    const signatureBuffer = await crypto.subtle.sign(
+      "HMAC",
+      cryptoKey,
+      messageData
+    );
     const calculatedSignature = Array.from(new Uint8Array(signatureBuffer))
-      .map(b => b.toString(16).padStart(2, '0'))
-      .join('')
-    
+      .map((b) => b.toString(16).padStart(2, "0"))
+      .join("");
+
     // Comparar firmas (comparación segura)
-    const providedSignature = signature.replace(/^sha256=/, '')
-    
+    const providedSignature = signature.replace(/^sha256=/, "");
+
     // Comparación constante en tiempo para evitar timing attacks
     if (calculatedSignature.length !== providedSignature.length) {
-      return false
+      return false;
     }
-    
-    let matches = true
+
+    let matches = true;
     for (let i = 0; i < calculatedSignature.length; i++) {
       if (calculatedSignature[i] !== providedSignature[i]) {
-        matches = false
+        matches = false;
       }
     }
-    
-    return matches
+
+    return matches;
   } catch (error) {
-    console.error('Error verificando firma:', error)
-    return false
+    console.error("Error verificando firma:", error);
+    return false;
   }
 }
 
@@ -99,37 +104,37 @@ async function verificarFirma(
  *  - DD-MM-YYYY
  */
 function normalizarFecha(fecha: string | null | undefined): string | null {
-  if (!fecha) return null
-  const trimmed = fecha.trim()
+  if (!fecha) return null;
+  const trimmed = fecha.trim();
 
   // DD/MM/YYYY
-  const slashMatch = /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/.exec(trimmed)
+  const slashMatch = /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/.exec(trimmed);
   if (slashMatch) {
-    const d = slashMatch[1].padStart(2, '0')
-    const m = slashMatch[2].padStart(2, '0')
-    const y = slashMatch[3]
-    return `${y}-${m}-${d}`
+    const d = slashMatch[1].padStart(2, "0");
+    const m = slashMatch[2].padStart(2, "0");
+    const y = slashMatch[3];
+    return `${y}-${m}-${d}`;
   }
 
   // DD-MM-YYYY
-  const dashDMYMatch = /^(\d{1,2})-(\d{1,2})-(\d{4})$/.exec(trimmed)
+  const dashDMYMatch = /^(\d{1,2})-(\d{1,2})-(\d{4})$/.exec(trimmed);
   if (dashDMYMatch) {
-    const d = dashDMYMatch[1].padStart(2, '0')
-    const m = dashDMYMatch[2].padStart(2, '0')
-    const y = dashDMYMatch[3]
-    return `${y}-${m}-${d}`
+    const d = dashDMYMatch[1].padStart(2, "0");
+    const m = dashDMYMatch[2].padStart(2, "0");
+    const y = dashDMYMatch[3];
+    return `${y}-${m}-${d}`;
   }
 
   // YYYY-MM-DD (normalize zero padding just in case)
-  const isoMatch = /^(\d{4})-(\d{1,2})-(\d{1,2})$/.exec(trimmed)
+  const isoMatch = /^(\d{4})-(\d{1,2})-(\d{1,2})$/.exec(trimmed);
   if (isoMatch) {
-    const y = isoMatch[1]
-    const m = isoMatch[2].padStart(2, '0')
-    const d = isoMatch[3].padStart(2, '0')
-    return `${y}-${m}-${d}`
+    const y = isoMatch[1];
+    const m = isoMatch[2].padStart(2, "0");
+    const d = isoMatch[3].padStart(2, "0");
+    return `${y}-${m}-${d}`;
   }
 
-  return null
+  return null;
 }
 
 /**
@@ -140,113 +145,122 @@ function parsearRespuesta(
   payload: KapsoWebhookPayload,
   lastUserMessage: string | null
 ): {
-  estado: string
-  fechaCompromiso: string | null
-  motivoNegativo: string | null
-  solicitaRetiro: boolean
+  estado: string;
+  fechaCompromiso: string | null;
+  motivoNegativo: string | null;
+  solicitaRetiro: boolean;
 } {
-  const variables = payload.variables || {}
-  
+  const variables = payload.variables || {};
+
   // Si hay variables estructuradas, usarlas según PRD
-  if (variables.confirmado !== undefined || variables.fecha_compromiso || variables.motivo_negativo) {
-    const fechaNormalizada = normalizarFecha(variables.fecha_compromiso)
+  if (
+    variables.confirmado !== undefined ||
+    variables.fecha_compromiso ||
+    variables.motivo_negativo
+  ) {
+    const fechaNormalizada = normalizarFecha(variables.fecha_compromiso);
     // Si hay fecha válida, el estado debe ser 'confirmado'
     const estado = fechaNormalizada
-      ? 'confirmado'
-      : (variables.confirmado === true ? 'confirmado' : 
-         variables.confirmado === false ? 'rechazado' : 
-         'respondio')
-    
+      ? "confirmado"
+      : variables.confirmado === true
+      ? "confirmado"
+      : variables.confirmado === false
+      ? "rechazado"
+      : "respondio";
+
     return {
       estado,
       fechaCompromiso: fechaNormalizada,
       motivoNegativo: variables.motivo_negativo || null,
-      solicitaRetiro: variables.solicita_retiro_domicilio === true
-    }
+      solicitaRetiro:
+        variables.solicita_retiro_domicilio === true ||
+        variables.solicita_retiro_domicilio === "true",
+    };
   }
 
-  
   return {
-    estado: 'respondio',
+    estado: "respondio",
     fechaCompromiso: null,
     motivoNegativo: null,
-    solicitaRetiro: false
-  }
+    solicitaRetiro: false,
+  };
 }
 
 // Algunas integraciones envían el body doblemente serializado (JSON como string dentro de JSON).
 // Esta utilidad intenta parsear una vez y, si el resultado es string, intenta parsear nuevamente.
 function parsePayload(bodyText: string): KapsoWebhookPayload {
-  let parsed: any
+  let parsed: any;
   try {
-    parsed = JSON.parse(bodyText)
+    parsed = JSON.parse(bodyText);
   } catch (e) {
-    console.error('Invalid JSON body:', e)
-    throw e
+    console.error("Invalid JSON body:", e);
+    throw e;
   }
-  if (typeof parsed === 'string') {
+  if (typeof parsed === "string") {
     try {
-      parsed = JSON.parse(parsed)
+      parsed = JSON.parse(parsed);
     } catch {
       // Si falla, dejamos el string como está y la validación posterior fallará
     }
   }
-  return parsed
+  return parsed;
 }
 
 Deno.serve(async (req) => {
   // Handle CORS preflight
-  if (req.method === 'OPTIONS') {
-    return new Response('ok', { headers: corsHeaders })
+  if (req.method === "OPTIONS") {
+    return new Response("ok", { headers: corsHeaders });
   }
 
   try {
     // Leer body como texto para verificar firma
-    const bodyText = await req.text()
+    const bodyText = await req.text();
     console.log(`Received Kapso webhook: ${bodyText}`);
-    
+
     // Parsear payload
-    const payload: KapsoWebhookPayload = parsePayload(bodyText)
+    const payload: KapsoWebhookPayload = parsePayload(bodyText);
 
     // Validate required fields
     if (!payload.context?.persona_id) {
-      console.error('Missing persona_id in context')
+      console.error("Missing persona_id in context");
       return new Response(
-        JSON.stringify({ error: 'Missing persona_id in context' }),
-        { 
+        JSON.stringify({ error: "Missing persona_id in context" }),
+        {
           status: 400,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
         }
-      )
+      );
     }
 
-    const personaId = payload.context.persona_id
-    const campanaId = payload.context.campana_id
-    const source = payload.context.source
+    const personaId = payload.context.persona_id;
+    const campanaId = payload.context.campana_id;
+    const source = payload.context.source;
 
     // Determinar si es workflow de recordatorio
-    const esRecordatorio = source === 'sistema_pickit_recordatorio' || 
-                          payload.workflow_id?.includes('recordatorio')
+    const esRecordatorio =
+      source === "sistema_pickit_recordatorio" ||
+      payload.workflow_id?.includes("recordatorio");
 
     // Extract last user message
-    const lastUserMessage = payload.last_user_message || 
-      payload.messages?.filter(m => m.role === 'user').pop()?.content ||
-      null
+    const lastUserMessage =
+      payload.last_user_message ||
+      payload.messages?.filter((m) => m.role === "user").pop()?.content ||
+      null;
 
     // Parsear respuesta (variables estructuradas o heurística)
-    const respuesta = parsearRespuesta(payload, lastUserMessage)
+    const respuesta = parsearRespuesta(payload, lastUserMessage);
 
     // Inicializar Supabase client
     const supabaseClient = createClient(
-      Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
+      Deno.env.get("SUPABASE_URL") ?? "",
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
       {
         auth: {
           autoRefreshToken: false,
           persistSession: false,
         },
       }
-    )
+    );
 
     // Preparar actualización de persona
     const updateData: any = {
@@ -254,92 +268,97 @@ Deno.serve(async (req) => {
       respuesta_texto: lastUserMessage,
       fecha_respuesta: new Date().toISOString(),
       motivo_negativo: respuesta.motivoNegativo,
-      solicita_retiro_domicilio: respuesta.solicitaRetiro
-    }
+      solicita_retiro_domicilio: respuesta.solicitaRetiro,
+    };
 
     // Agregar fecha_compromiso si está presente
     if (respuesta.fechaCompromiso) {
-      updateData.fecha_compromiso = respuesta.fechaCompromiso
+      updateData.fecha_compromiso = respuesta.fechaCompromiso;
     }
 
     // Si es recordatorio, marcar recordatorio_enviado
     if (esRecordatorio) {
-      updateData.recordatorio_enviado = true
-      updateData.fecha_envio_recordatorio = new Date().toISOString()
+      updateData.recordatorio_enviado = true;
+      updateData.fecha_envio_recordatorio = new Date().toISOString();
     }
 
     // Update persona record
     const { error: updateError } = await supabaseClient
-      .from('personas_contactar')
+      .from("personas_contactar")
       .update(updateData)
-      .eq('id', personaId)
+      .eq("id", personaId);
 
     if (updateError) {
-      console.error('Error updating persona:', updateError)
-      throw updateError
+      console.error("Error updating persona:", updateError);
+      throw updateError;
     }
 
-    console.log(`Updated persona ${personaId} to status: ${respuesta.estado}`)
+    console.log(`Updated persona ${personaId} to status: ${respuesta.estado}`);
 
     // Update campaign counters if we have campana_id
     if (campanaId) {
       // Get updated counts
       const { data: personas, error: countError } = await supabaseClient
-        .from('personas_contactar')
-        .select('estado_contacto')
-        .eq('campana_id', campanaId)
+        .from("personas_contactar")
+        .select("estado_contacto")
+        .eq("campana_id", campanaId);
 
       if (!countError && personas) {
-        const personasContactadas = personas.filter(p => 
-          ['enviado_whatsapp', 'respondio', 'confirmado', 'rechazado', 'no_responde'].includes(p.estado_contacto)
-        ).length
+        const personasContactadas = personas.filter((p) =>
+          [
+            "enviado_whatsapp",
+            "respondio",
+            "confirmado",
+            "rechazado",
+            "no_responde",
+          ].includes(p.estado_contacto)
+        ).length;
 
-        const personasConfirmadas = personas.filter(p => 
-          p.estado_contacto === 'confirmado'
-        ).length
+        const personasConfirmadas = personas.filter(
+          (p) => p.estado_contacto === "confirmado"
+        ).length;
 
         // Update campaign stats
         await supabaseClient
-          .from('campanas')
+          .from("campanas")
           .update({
             personas_contactadas: personasContactadas,
             personas_confirmadas: personasConfirmadas,
             updated_at: new Date().toISOString(),
           })
-          .eq('id', campanaId)
+          .eq("id", campanaId);
 
-        console.log(`Updated campaign ${campanaId} counters`)
+        console.log(`Updated campaign ${campanaId} counters`);
       }
     }
 
     return new Response(
-      JSON.stringify({ 
-        success: true, 
+      JSON.stringify({
+        success: true,
         persona_id: personaId,
         nuevo_estado: respuesta.estado,
         fecha_compromiso: respuesta.fechaCompromiso,
-        message: 'Webhook processed successfully'
+        message: "Webhook processed successfully",
       }),
-      { 
+      {
         status: 200,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
       }
-    )
-
+    );
   } catch (error) {
-    console.error('Error processing webhook:', error)
+    console.error("Error processing webhook:", error);
     return new Response(
-      JSON.stringify({ 
-        error: error.message || 'Internal server error',
-        details: error.toString()
+      JSON.stringify({
+        error: error.message || "Internal server error",
+        details: error.toString(),
       }),
-      { 
+      {
         status: 500,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
       }
-    )
+    );
   }
-})
+});
 
 /* To invoke locally:
 
