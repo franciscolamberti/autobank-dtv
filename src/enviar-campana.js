@@ -729,6 +729,23 @@ export default {
   // Handler para cron trigger
   // Según PRD: ejecuta diariamente a las 12:00 UTC (09:00 AR para recordatorios, inicio ventana 1 para contacto)
   async scheduled(event, env, ctx) {
+    try {
+      console.log("Llamando API: /api/recordatorios");
+      const res = await fetch(
+        "https://autobank-dtv.vercel.app/api/recordatorios",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+        }
+      );
+      const data = await res.json().catch(() => ({}));
+      console.log("enviar-recordatorios (API):", res.status, data);
+    } catch (err) {
+      console.error("Error llamando enviar-recordatorios:", err);
+    }
+
     const timezone = "America/Argentina/Buenos_Aires";
     const horaArgentina = parseInt(
       new Date().toLocaleString("en-US", {
