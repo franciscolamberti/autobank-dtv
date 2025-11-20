@@ -42,3 +42,9 @@ entrypoint = "./functions/generar-corte-diario/index.ts"
 # Specifies static files to be bundled with the function. Supports glob patterns.
 # For example, if you want to serve static HTML pages in your function:
 # static_files = [ "./functions/generar-corte-diario/*.html" ]
+
+[functions.kapso-message-failed]
+enabled = true
+verify_jwt = false
+import_map = "./functions/kapso-message-failed/deno.json"
+entrypoint = "./functions/kapso-message-failed/index.ts"

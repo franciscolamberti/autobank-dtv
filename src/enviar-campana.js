@@ -2,8 +2,6 @@
 // Según PRD: maneja envío manual, cron contacto inicial, cron recordatorios, generación archivo diario pickit
 
 const DRY_RUN = false; // cambiar a false para envíos reales
-const BATCH_SIZE = 10; // mensajes por batch
-const DELAY_BETWEEN_BATCHES = 1000; // ms entre batches
 
 /**
  * Convierte hora UTC a timezone especificada
