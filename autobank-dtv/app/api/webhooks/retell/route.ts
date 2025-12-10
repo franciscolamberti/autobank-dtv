@@ -88,12 +88,6 @@ export async function POST(request: NextRequest) {
       transcript: call.transcript || "",
       recording_url: call.recording_url || "",
       resultado: customData.resultado,
-      confirmado: customData.confirmado ?? false,
-      fecha_compromiso: customData.fecha_compromiso
-        ? new Date(customData.fecha_compromiso).toISOString().split("T")[0]
-        : null,
-      solicita_retiro_domicilio: customData.solicita_retiro_domicilio ?? false,
-      motivo_negativo: customData.motivo_negativo || null,
     };
 
     const { data: insertedCall, error: insertError } = await supabase
@@ -108,6 +102,30 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         { error: "Failed to save call data", details: insertError.message },
         { status: 500 }
+      );
+    }
+
+    const personaUpdateData: Database["public"]["Tables"]["personas_contactar"]["Update"] =
+      {
+        fecha_compromiso: customData.fecha_compromiso || null,
+        solicita_retiro_domicilio:
+          customData.solicita_retiro_domicilio ?? false,
+        motivo_negativo: customData.motivo_negativo || null,
+      };
+
+    if (customData.confirmado === true) {
+      personaUpdateData.estado_contacto = "confirmado";
+    }
+
+    const { error: updatePersonaError } = await supabase
+      .from("personas_contactar")
+      .update(personaUpdateData)
+      .eq("id", personaId);
+
+    if (updatePersonaError) {
+      console.error(
+        `[retell-webhook] Error updating persona ${personaId}:`,
+        updatePersonaError
       );
     }
 

@@ -173,48 +173,36 @@ export type Database = {
       }
       llamadas: {
         Row: {
-          confirmado: boolean
           created_at: string
           duracion_segundos: number
           external_id: string
-          fecha_compromiso: string | null
           fecha_llamada: string
           id: string
-          motivo_negativo: string | null
           persona_id: string
           recording_url: string
           resultado: Database["public"]["Enums"]["resultado_llamada"] | null
-          solicita_retiro_domicilio: boolean | null
           transcript: string
         }
         Insert: {
-          confirmado?: boolean
           created_at?: string
           duracion_segundos: number
           external_id: string
-          fecha_compromiso?: string | null
           fecha_llamada: string
           id?: string
-          motivo_negativo?: string | null
           persona_id: string
           recording_url: string
           resultado?: Database["public"]["Enums"]["resultado_llamada"] | null
-          solicita_retiro_domicilio?: boolean | null
           transcript: string
         }
         Update: {
-          confirmado?: boolean
           created_at?: string
           duracion_segundos?: number
           external_id?: string
-          fecha_compromiso?: string | null
           fecha_llamada?: string
           id?: string
-          motivo_negativo?: string | null
           persona_id?: string
           recording_url?: string
           resultado?: Database["public"]["Enums"]["resultado_llamada"] | null
-          solicita_retiro_domicilio?: boolean | null
           transcript?: string
         }
         Relationships: [
