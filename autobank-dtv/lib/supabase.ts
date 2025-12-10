@@ -65,8 +65,6 @@ export type Database = {
           file_name: string
           file_path: string
           id: string
-          total_filas: number
-          total_personas: number
         }
         Insert: {
           campana_id: string
@@ -74,8 +72,6 @@ export type Database = {
           file_name: string
           file_path: string
           id?: string
-          total_filas: number
-          total_personas: number
         }
         Update: {
           campana_id?: string
@@ -83,8 +79,6 @@ export type Database = {
           file_name?: string
           file_path?: string
           id?: string
-          total_filas?: number
-          total_personas?: number
         }
         Relationships: [
           {
@@ -176,6 +170,62 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      llamadas: {
+        Row: {
+          confirmado: boolean
+          created_at: string
+          duracion_segundos: number
+          external_id: string
+          fecha_compromiso: string | null
+          fecha_llamada: string
+          id: string
+          motivo_negativo: string | null
+          persona_id: string
+          recording_url: string
+          resultado: Database["public"]["Enums"]["resultado_llamada"] | null
+          solicita_retiro_domicilio: boolean | null
+          transcript: string
+        }
+        Insert: {
+          confirmado?: boolean
+          created_at?: string
+          duracion_segundos: number
+          external_id: string
+          fecha_compromiso?: string | null
+          fecha_llamada: string
+          id?: string
+          motivo_negativo?: string | null
+          persona_id: string
+          recording_url: string
+          resultado?: Database["public"]["Enums"]["resultado_llamada"] | null
+          solicita_retiro_domicilio?: boolean | null
+          transcript: string
+        }
+        Update: {
+          confirmado?: boolean
+          created_at?: string
+          duracion_segundos?: number
+          external_id?: string
+          fecha_compromiso?: string | null
+          fecha_llamada?: string
+          id?: string
+          motivo_negativo?: string | null
+          persona_id?: string
+          recording_url?: string
+          resultado?: Database["public"]["Enums"]["resultado_llamada"] | null
+          solicita_retiro_domicilio?: boolean | null
+          transcript?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "llamadas_persona_id_fkey"
+            columns: ["persona_id"]
+            isOneToOne: false
+            referencedRelation: "personas_contactar"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       personas_contactar: {
         Row: {
@@ -335,7 +385,7 @@ export type Database = {
           created_at: string | null
           direccion: string
           external_id: number
-          horario: string | null
+          horario: string
           id: string
           lat: number
           lon: number
@@ -345,7 +395,7 @@ export type Database = {
           created_at?: string | null
           direccion: string
           external_id: number
-          horario?: string | null
+          horario: string
           id?: string
           lat: number
           lon: number
@@ -355,7 +405,7 @@ export type Database = {
           created_at?: string | null
           direccion?: string
           external_id?: number
-          horario?: string | null
+          horario?: string
           id?: string
           lat?: number
           lon?: number
@@ -380,6 +430,7 @@ export type Database = {
         | "rechazado"
         | "no_responde"
         | "error_envio"
+      resultado_llamada: "contestada" | "no_contestada" | "ocupado" | "fallida"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -517,6 +568,7 @@ export const Constants = {
         "no_responde",
         "error_envio",
       ],
+      resultado_llamada: ["contestada", "no_contestada", "ocupado", "fallida"],
     },
   },
 } as const
