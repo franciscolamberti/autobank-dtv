@@ -30,8 +30,10 @@ import { supabase, Tables } from "@/lib/supabase";
 import { useToast } from "@/hooks/use-toast";
 import * as XLSX from "xlsx";
 import { PersonaList } from "@/components/persona-list";
+import { PersonaDetailDialog } from "@/components/persona-detail-dialog";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { formatIsoDateToDmy } from "@/lib/utils/date";
+import { Info } from "lucide-react";
 
 type PersonaConPickit = Tables<"personas_contactar"> & {
   punto_pickit?: Tables<"puntos_pickit">;
@@ -71,6 +73,8 @@ export default function CampaignDetailPage() {
     >
   >([]);
   const [cortes, setCortes] = useState<Tables<"campana_cortes_diarios">[]>([]);
+  const [selectedPersona, setSelectedPersona] =
+    useState<PersonaConPickit | null>(null);
 
   // Redirect if someone tries to access /campanas/nueva through the dynamic route
   if (id === "nueva") {
@@ -667,7 +671,8 @@ export default function CampaignDetailPage() {
                       renderItem={(persona) => (
                         <div
                           key={persona.id}
-                          className="flex items-center justify-between p-3 border border-border rounded-lg hover:bg-muted/50 bg-green-50/50"
+                          className="cursor-pointer flex items-center justify-between p-3 border border-border rounded-lg hover:bg-muted/50 bg-green-50/50"
+                          onClick={() => setSelectedPersona(persona)}
                         >
                           <div className="flex items-center gap-3 flex-1">
                             <Checkbox
@@ -799,9 +804,21 @@ export default function CampaignDetailPage() {
                             />
                             <div className="flex-1">
                               <div className="flex items-center gap-2">
-                                <p className="font-medium">
+                                <button
+                                  onClick={() => setSelectedPersona(persona)}
+                                  className="font-medium hover:text-blue-600 hover:underline cursor-pointer text-left"
+                                >
                                   {persona.apellido_nombre}
-                                </p>
+                                </button>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-6 w-6 text-muted-foreground hover:text-blue-600"
+                                  onClick={() => setSelectedPersona(persona)}
+                                  title="Ver detalles y llamadas"
+                                >
+                                  <Info className="h-3 w-3" />
+                                </Button>
                                 {(persona.cantidad_decos || 0) > 1 && (
                                   <Badge
                                     variant="outline"
@@ -923,9 +940,21 @@ export default function CampaignDetailPage() {
                             />
                             <div className="flex-1">
                               <div className="flex items-center gap-2">
-                                <p className="font-medium">
+                                <button
+                                  onClick={() => setSelectedPersona(persona)}
+                                  className="font-medium hover:text-blue-600 hover:underline cursor-pointer text-left"
+                                >
                                   {persona.apellido_nombre}
-                                </p>
+                                </button>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-6 w-6 text-muted-foreground hover:text-blue-600"
+                                  onClick={() => setSelectedPersona(persona)}
+                                  title="Ver detalles y llamadas"
+                                >
+                                  <Info className="h-3 w-3" />
+                                </Button>
                                 {(persona.cantidad_decos || 0) > 1 && (
                                   <Badge
                                     variant="outline"
@@ -1036,9 +1065,21 @@ export default function CampaignDetailPage() {
                             />
                             <div className="flex-1">
                               <div className="flex items-center gap-2">
-                                <p className="font-medium">
+                                <button
+                                  onClick={() => setSelectedPersona(persona)}
+                                  className="font-medium hover:text-blue-600 hover:underline cursor-pointer text-left"
+                                >
                                   {persona.apellido_nombre}
-                                </p>
+                                </button>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-6 w-6 text-muted-foreground hover:text-blue-600"
+                                  onClick={() => setSelectedPersona(persona)}
+                                  title="Ver detalles y llamadas"
+                                >
+                                  <Info className="h-3 w-3" />
+                                </Button>
                                 {(persona.cantidad_decos || 0) > 1 && (
                                   <Badge
                                     variant="outline"
@@ -1148,9 +1189,21 @@ export default function CampaignDetailPage() {
                             />
                             <div className="flex-1">
                               <div className="flex items-center gap-2">
-                                <p className="font-medium">
+                                <button
+                                  onClick={() => setSelectedPersona(persona)}
+                                  className="font-medium hover:text-blue-600 hover:underline cursor-pointer text-left"
+                                >
                                   {persona.apellido_nombre}
-                                </p>
+                                </button>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-6 w-6 text-muted-foreground hover:text-blue-600"
+                                  onClick={() => setSelectedPersona(persona)}
+                                  title="Ver detalles y llamadas"
+                                >
+                                  <Info className="h-3 w-3" />
+                                </Button>
                                 {(persona.cantidad_decos || 0) > 1 && (
                                   <Badge
                                     variant="outline"
@@ -1301,6 +1354,15 @@ export default function CampaignDetailPage() {
           </TabsContent>
         </Tabs>
       </main>
+
+      {/* Dialog para mostrar detalles de persona y llamadas */}
+      <PersonaDetailDialog
+        open={selectedPersona !== null}
+        onOpenChange={(open) => {
+          if (!open) setSelectedPersona(null);
+        }}
+        persona={selectedPersona}
+      />
     </div>
   );
 }
