@@ -22,6 +22,8 @@ import {
   FileText,
   Package,
   Hash,
+  Phone,
+  MessageSquare,
 } from "lucide-react";
 import Link from "next/link";
 import { redirect, useParams } from "next/navigation";
@@ -172,7 +174,7 @@ export default function CampaignDetailPage() {
       const { data: personasData, error: personasError } = await supabase
         .from("personas_contactar")
         .select(
-          "id, apellido_nombre, dni, telefono_principal, nro_cliente, nro_wo, nros_cliente, nros_wo, cantidad_decos, distancia_metros, estado_contacto, dentro_rango, fuera_de_rango, tiene_whatsapp, fecha_envio_whatsapp, fecha_respuesta, respuesta_texto, fecha_compromiso, motivo_negativo, solicita_retiro_domicilio, decodificador_devuelto, fecha_devolucion, direccion_completa, cp, localidad, provincia, punto_pickit:puntos_pickit(id, external_id, nombre, direccion), error_envio_kapso"
+          "id, apellido_nombre, dni, telefono_principal, nro_cliente, nro_wo, nros_cliente, nros_wo, cantidad_decos, distancia_metros, estado_contacto, dentro_rango, fuera_de_rango, tiene_whatsapp, fecha_envio_whatsapp, fecha_respuesta, respuesta_texto, fecha_compromiso, motivo_negativo, solicita_retiro_domicilio, decodificador_devuelto, fecha_devolucion, direccion_completa, cp, localidad, provincia, punto_pickit:puntos_pickit(id, external_id, nombre, direccion), error_envio_kapso, fuente_confirmacion"
         )
         .eq("campana_id", id);
 
@@ -716,6 +718,27 @@ export default function CampaignDetailPage() {
                                     Devuelto
                                   </Badge>
                                 )}
+                                <Badge
+                                  variant="outline"
+                                  className={
+                                    (persona.fuente_confirmacion || "whatsapp") === "llamada"
+                                      ? "text-purple-600 border-purple-200 bg-purple-50 text-xs"
+                                      : "text-teal-600 border-teal-200 bg-teal-50 text-xs"
+                                  }
+                                  title="Fuente de confirmación"
+                                >
+                                  {(persona.fuente_confirmacion || "whatsapp") === "llamada" ? (
+                                    <>
+                                      <Phone className="h-3 w-3 mr-1" />
+                                      Confirmado por llamada
+                                    </>
+                                  ) : (
+                                    <>
+                                      <MessageSquare className="h-3 w-3 mr-1" />
+                                      Confirmado por WhatsApp
+                                    </>
+                                  )}
+                                </Badge>
                               </div>
                               <p className="text-sm text-muted-foreground">
                                 {persona.telefono_principal}

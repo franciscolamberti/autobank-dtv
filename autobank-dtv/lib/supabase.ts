@@ -238,6 +238,9 @@ export type Database = {
           fecha_envio_whatsapp: string | null
           fecha_respuesta: string | null
           fila_archivo: number
+          fuente_confirmacion:
+            | Database["public"]["Enums"]["fuente_confirmacion"]
+            | null
           fuera_de_rango: boolean | null
           id: string
           intentos_envio: number
@@ -283,6 +286,9 @@ export type Database = {
           fecha_envio_whatsapp?: string | null
           fecha_respuesta?: string | null
           fila_archivo: number
+          fuente_confirmacion?:
+            | Database["public"]["Enums"]["fuente_confirmacion"]
+            | null
           fuera_de_rango?: boolean | null
           id?: string
           intentos_envio?: number
@@ -328,6 +334,9 @@ export type Database = {
           fecha_envio_whatsapp?: string | null
           fecha_respuesta?: string | null
           fila_archivo?: number
+          fuente_confirmacion?:
+            | Database["public"]["Enums"]["fuente_confirmacion"]
+            | null
           fuera_de_rango?: boolean | null
           id?: string
           intentos_envio?: number
@@ -418,6 +427,7 @@ export type Database = {
         | "rechazado"
         | "no_responde"
         | "error_envio"
+      fuente_confirmacion: "whatsapp" | "llamada"
       resultado_llamada: "contestada" | "no_contestada" | "ocupado" | "fallida"
     }
     CompositeTypes: {
@@ -556,6 +566,7 @@ export const Constants = {
         "no_responde",
         "error_envio",
       ],
+      fuente_confirmacion: ["whatsapp", "llamada"],
       resultado_llamada: ["contestada", "no_contestada", "ocupado", "fallida"],
     },
   },

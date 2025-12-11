@@ -111,6 +111,7 @@ export async function POST(request: NextRequest) {
         solicita_retiro_domicilio:
           customData.solicita_retiro_domicilio ?? false,
         motivo_negativo: customData.motivo_negativo || null,
+        fuente_confirmacion: "llamada",
       };
 
     if (customData.confirmado === true) {
