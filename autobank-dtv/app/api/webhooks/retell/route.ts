@@ -1,3 +1,5 @@
+import { KAPSO_WORKFLOW_IDS } from "@/lib/constants/kapso.constants";
+import { Kapso } from "@/lib/integrations/kapso";
 import { Database, supabase } from "@/lib/supabase";
 import { RetellCall } from "@/lib/types/retell.types";
 import { verifyWebhookSignature } from "@/lib/utils/retell";
@@ -65,9 +67,11 @@ export async function POST(request: NextRequest) {
     const personaId = call.retell_llm_dynamic_variables.persona_id;
     const { data: persona, error: personaError } = await supabase
       .from("personas_contactar")
-      .select("id")
+      .select(
+        `id, telefono_principal, nros_wo, nro_wo, cantidad_decos, punto_pickit:puntos_pickit(id, nombre, direccion, horario)`
+      )
       .eq("id", personaId)
-      .single();
+      .maybeSingle();
 
     if (personaError || !persona) {
       console.error(
@@ -116,6 +120,41 @@ export async function POST(request: NextRequest) {
 
     if (customData.confirmado === true) {
       personaUpdateData.estado_contacto = "confirmado";
+
+      const nrosWO = persona.nros_wo?.length
+        ? persona.nros_wo
+        : persona.nros_wo
+        ? [persona.nro_wo]
+        : [];
+
+      const nrosOrden = nrosWO.join(", ");
+      const cantidadDecos = persona.cantidad_decos ?? 1;
+      const textoDeco =
+        cantidadDecos === 1 ? "el decodificador" : "los decodificadores";
+
+      try {
+        await Kapso.executeWorkflow(
+          KAPSO_WORKFLOW_IDS.CONFIRMACION_LLAMADA,
+          persona.telefono_principal,
+          {
+            nros_orden: nrosOrden,
+            punto_pickit: persona.punto_pickit?.nombre || "N/A",
+            direccion_punto: persona.punto_pickit?.direccion || "N/A",
+            horarios_punto: persona.punto_pickit?.horario || "N/A",
+            fecha_compromiso: customData.fecha_compromiso || "",
+            texto_deco: textoDeco,
+          }
+        );
+
+        console.log(
+          `[retell-webhook] Successfully triggered Kapso workflow ${KAPSO_WORKFLOW_IDS.CONFIRMACION_LLAMADA} for persona ${personaId}`
+        );
+      } catch (kapsoError) {
+        console.error(
+          `[retell-webhook] Failed to call Kapso workflow for persona ${personaId}:`,
+          kapsoError instanceof Error ? kapsoError.message : String(kapsoError)
+        );
+      }
     }
 
     const { error: updatePersonaError } = await supabase

@@ -1,0 +1,3 @@
+export const KAPSO_WORKFLOW_IDS = {
+  CONFIRMACION_LLAMADA: "12a6bcf3-d7a0-48f7-873d-5d104213093a",
+};
