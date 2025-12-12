@@ -133,21 +133,23 @@ export async function POST(request: NextRequest) {
         cantidadDecos === 1 ? "el decodificador" : "los decodificadores";
 
       try {
+        const context = {
+          nros_orden: nrosOrden,
+          punto_pickit: persona.punto_pickit?.nombre || "N/A",
+          direccion_punto: persona.punto_pickit?.direccion || "N/A",
+          horarios_punto: persona.punto_pickit?.horario || "N/A",
+          fecha_compromiso: customData.fecha_compromiso || "",
+          texto_deco: textoDeco,
+        };
+
         await Kapso.executeWorkflow(
           KAPSO_WORKFLOW_IDS.CONFIRMACION_LLAMADA,
           persona.telefono_principal,
-          {
-            nros_orden: nrosOrden,
-            punto_pickit: persona.punto_pickit?.nombre || "N/A",
-            direccion_punto: persona.punto_pickit?.direccion || "N/A",
-            horarios_punto: persona.punto_pickit?.horario || "N/A",
-            fecha_compromiso: customData.fecha_compromiso || "",
-            texto_deco: textoDeco,
-          }
+          context
         );
 
         console.log(
-          `[retell-webhook] Successfully triggered Kapso workflow ${KAPSO_WORKFLOW_IDS.CONFIRMACION_LLAMADA} for persona ${personaId}`
+          `[retell-webhook] Successfully triggered Kapso workflow ${KAPSO_WORKFLOW_IDS.CONFIRMACION_LLAMADA} for persona ${personaId} with payload ${JSON.stringify(context)}`
         );
       } catch (kapsoError) {
         console.error(
