@@ -276,13 +276,37 @@ function MensajesTab({ personaId }: { personaId: string }) {
     );
   }
 
-  const formatMessageTimestamp = (timestamp: string) => {
+  const formatMessageTime = (timestamp: string) => {
     try {
-      // Timestamp is Unix timestamp as string
       const date = new Date(parseInt(timestamp) * 1000);
-      return formatDateTimeArgentina(date.toISOString());
+      return date.toLocaleTimeString("es-AR", {
+        hour: "2-digit",
+        minute: "2-digit",
+      });
     } catch {
-      return timestamp;
+      return "";
+    }
+  };
+
+  const formatMessageDate = (timestamp: string) => {
+    try {
+      const date = new Date(parseInt(timestamp) * 1000);
+      const today = new Date();
+      const yesterday = new Date(today);
+      yesterday.setDate(yesterday.getDate() - 1);
+
+      if (date.toDateString() === today.toDateString()) {
+        return "Hoy";
+      } else if (date.toDateString() === yesterday.toDateString()) {
+        return "Ayer";
+      } else {
+        return date.toLocaleDateString("es-AR", {
+          day: "numeric",
+          month: "long",
+        });
+      }
+    } catch {
+      return "";
     }
   };
 
@@ -290,7 +314,6 @@ function MensajesTab({ personaId }: { personaId: string }) {
     if (message.text?.body) return message.text.body;
     if (message.kapso?.content) return message.kapso.content;
     
-    // Handle different message types
     switch (message.type) {
       case "image":
         return message.image?.caption || "📷 Imagen";
@@ -321,87 +344,81 @@ function MensajesTab({ personaId }: { personaId: string }) {
     }
   };
 
-  return (
-    <div className="space-y-4 w-full">
-      <div className="space-y-3">
-        {messages.map((message) => {
-          const isInbound = message.kapso?.direction === "inbound";
-          const status = message.kapso?.status;
-          const hasMedia = message.kapso?.has_media;
+  // Group messages by date
+  const groupedMessages = messages.reduce((acc, message) => {
+    const date = formatMessageDate(message.timestamp);
+    if (!acc[date]) {
+      acc[date] = [];
+    }
+    acc[date].push(message);
+    return acc;
+  }, {} as Record<string, KapsoMessage[]>);
 
-          return (
-            <div
-              key={message.id}
-              className={`flex gap-3 p-4 rounded-lg border ${
-                isInbound
-                  ? "bg-blue-50 border-blue-200"
-                  : "bg-gray-50 border-gray-200"
-              }`}
-            >
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center justify-between mb-1">
-                  <div className="flex items-center gap-2">
-                    <Badge
-                      variant="outline"
-                      className={
-                        isInbound
-                          ? "bg-blue-100 text-blue-700 border-blue-300"
-                          : "bg-gray-100 text-gray-700 border-gray-300"
-                      }
-                    >
-                      {isInbound ? "Recibido" : "Enviado"}
-                    </Badge>
-                    {status && (
-                      <Badge
-                        variant="outline"
-                        className={
-                          status === "delivered" || status === "read"
-                            ? "bg-green-100 text-green-700 border-green-300"
-                            : status === "failed"
-                            ? "bg-red-100 text-red-700 border-red-300"
-                            : "bg-yellow-100 text-yellow-700 border-yellow-300"
-                        }
-                      >
-                        {status === "delivered"
-                          ? "Entregado"
-                          : status === "read"
-                          ? "Leído"
-                          : status === "sent"
-                          ? "Enviado"
-                          : status === "failed"
-                          ? "Fallido"
-                          : status}
-                      </Badge>
-                    )}
-                    {hasMedia && (
-                      <Badge variant="outline" className="bg-purple-100 text-purple-700 border-purple-300">
-                        📎 Media
-                      </Badge>
-                    )}
-                  </div>
-                  <span className="text-xs text-muted-foreground">
-                    {formatMessageTimestamp(message.timestamp)}
-                  </span>
-                </div>
-                <p className="text-sm whitespace-pre-wrap break-words">
-                  {getMessageContent(message)}
-                </p>
-                {hasMedia && message.kapso?.media_url && (
-                  <div className="mt-2">
-                    <a
-                      href={message.kapso.media_url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-xs text-blue-600 hover:underline"
-                    >
-                      Ver archivo adjunto
-                    </a>
-                  </div>
-                )}
+  return (
+    <div className="flex flex-col h-[600px] bg-gray-50 rounded-lg border overflow-hidden">
+      <div className="flex-1 overflow-y-auto p-4 space-y-4">
+        {Object.entries(groupedMessages).map(([date, dateMessages]) => (
+          <div key={date}>
+            <div className="flex items-center justify-center my-4">
+              <div className="bg-white px-3 py-1 rounded-full text-xs text-muted-foreground border">
+                {date}
               </div>
             </div>
-          );
-        })}
+            {dateMessages.map((message) => {
+              const isInbound = message.kapso?.direction === "inbound";
+              const status = message.kapso?.status;
+              const hasMedia = message.kapso?.has_media;
+
+              return (
+                <div
+                  key={message.id}
+                  className={`flex mb-2 ${
+                    isInbound ? "justify-start" : "justify-end"
+                  }`}
+                >
+                  <div
+                    className={`max-w-[70%] rounded-lg px-3 py-2 ${
+                      isInbound
+                        ? "bg-white rounded-tl-none border border-gray-200"
+                        : "bg-blue-500 text-white rounded-tr-none"
+                    }`}
+                  >
+                    {hasMedia && message.kapso?.media_url && (
+                      <div className="mb-2">
+                        <a
+                          href={message.kapso.media_url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className={`text-sm underline ${
+                            isInbound ? "text-blue-600" : "text-blue-100"
+                          }`}
+                        >
+                          📎 Ver archivo adjunto
+                        </a>
+                      </div>
+                    )}
+                    <p
+                      className={`text-sm whitespace-pre-wrap break-words ${
+                        isInbound ? "text-gray-900" : "text-white"
+                      }`}
+                    >
+                      {getMessageContent(message)}
+                    </p>
+                    <div
+                      className={`flex items-center justify-end gap-1 mt-1 ${
+                        isInbound ? "text-gray-500" : "text-blue-100"
+                      }`}
+                    >
+                      <span className="text-xs">
+                        {formatMessageTime(message.timestamp)}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        ))}
       </div>
     </div>
   );

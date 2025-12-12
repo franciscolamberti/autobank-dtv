@@ -12,7 +12,6 @@ export class Kapso {
   static async getWorkflowExecution(
     executionId: string
   ): Promise<KapsoWorkflowExecution> {
-    console.log({ executionId });
     const { data } = await kapsoClient.get<KapsoWorkflowExecutionResponse>(
       `/platform/v1/workflow_executions/${executionId}`
     );
@@ -45,7 +44,7 @@ export class Kapso {
       );
 
       const messages = data.data || [];
-      allMessages.push(...messages);
+      allMessages.push(...messages.reverse());
 
       nextCursor = data.paging?.cursors?.after;
     } while (nextCursor);

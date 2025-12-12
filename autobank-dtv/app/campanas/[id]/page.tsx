@@ -721,13 +721,15 @@ export default function CampaignDetailPage() {
                                 <Badge
                                   variant="outline"
                                   className={
-                                    (persona.fuente_confirmacion || "whatsapp") === "llamada"
+                                    (persona.fuente_confirmacion ||
+                                      "whatsapp") === "llamada"
                                       ? "text-purple-600 border-purple-200 bg-purple-50 text-xs"
                                       : "text-teal-600 border-teal-200 bg-teal-50 text-xs"
                                   }
                                   title="Fuente de confirmación"
                                 >
-                                  {(persona.fuente_confirmacion || "whatsapp") === "llamada" ? (
+                                  {(persona.fuente_confirmacion ||
+                                    "whatsapp") === "llamada" ? (
                                     <>
                                       <Phone className="h-3 w-3 mr-1" />
                                       Confirmado por llamada
@@ -812,36 +814,26 @@ export default function CampaignDetailPage() {
                       renderItem={(persona) => (
                         <div
                           key={persona.id}
-                          className="flex items-center justify-between p-3 border border-border rounded-lg hover:bg-muted/50"
+                          className="flex items-center justify-between p-3 border border-border rounded-lg hover:bg-muted/50 cursor-pointer"
+                          onClick={() => setSelectedPersona(persona)}
                         >
                           <div className="flex items-center gap-3 flex-1">
                             <Checkbox
                               checked={persona.decodificador_devuelto}
-                              onCheckedChange={() =>
+                              onCheckedChange={(e) => {
                                 handleToggleDevolucion(
                                   persona.id,
                                   persona.decodificador_devuelto
-                                )
-                              }
+                                );
+                              }}
                               className="shrink-0"
+                              onClick={(e) => e.stopPropagation()}
                             />
                             <div className="flex-1">
                               <div className="flex items-center gap-2">
-                                <button
-                                  onClick={() => setSelectedPersona(persona)}
-                                  className="font-medium hover:text-blue-600 hover:underline cursor-pointer text-left"
-                                >
+                                <p className="font-medium">
                                   {persona.apellido_nombre}
-                                </button>
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  className="h-6 w-6 text-muted-foreground hover:text-blue-600"
-                                  onClick={() => setSelectedPersona(persona)}
-                                  title="Ver detalles y llamadas"
-                                >
-                                  <Info className="h-3 w-3" />
-                                </Button>
+                                </p>
                                 {(persona.cantidad_decos || 0) > 1 && (
                                   <Badge
                                     variant="outline"
@@ -948,36 +940,26 @@ export default function CampaignDetailPage() {
                       renderItem={(persona) => (
                         <div
                           key={persona.id}
-                          className="flex items-center justify-between p-3 border border-border rounded-lg hover:bg-muted/50"
+                          className="flex items-center justify-between p-3 border border-border rounded-lg hover:bg-muted/50 cursor-pointer"
+                          onClick={() => setSelectedPersona(persona)}
                         >
                           <div className="flex items-center gap-3 flex-1">
                             <Checkbox
                               checked={persona.decodificador_devuelto}
-                              onCheckedChange={() =>
+                              onCheckedChange={(e) => {
                                 handleToggleDevolucion(
                                   persona.id,
                                   persona.decodificador_devuelto
-                                )
-                              }
+                                );
+                              }}
                               className="shrink-0"
+                              onClick={(e) => e.stopPropagation()}
                             />
                             <div className="flex-1">
                               <div className="flex items-center gap-2">
-                                <button
-                                  onClick={() => setSelectedPersona(persona)}
-                                  className="font-medium hover:text-blue-600 hover:underline cursor-pointer text-left"
-                                >
+                                <p className="font-medium">
                                   {persona.apellido_nombre}
-                                </button>
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  className="h-6 w-6 text-muted-foreground hover:text-blue-600"
-                                  onClick={() => setSelectedPersona(persona)}
-                                  title="Ver detalles y llamadas"
-                                >
-                                  <Info className="h-3 w-3" />
-                                </Button>
+                                </p>
                                 {(persona.cantidad_decos || 0) > 1 && (
                                   <Badge
                                     variant="outline"
@@ -1073,36 +1055,26 @@ export default function CampaignDetailPage() {
                       renderItem={(persona) => (
                         <div
                           key={persona.id}
-                          className="flex items-center justify-between p-3 border border-border rounded-lg hover:bg-muted/50 bg-yellow-50/50"
+                          className="flex items-center justify-between p-3 border border-border rounded-lg hover:bg-muted/50 bg-yellow-50/50 cursor-pointer"
+                          onClick={() => setSelectedPersona(persona)}
                         >
                           <div className="flex items-center gap-3 flex-1">
                             <Checkbox
                               checked={persona.decodificador_devuelto}
-                              onCheckedChange={() =>
+                              onCheckedChange={(e) => {
                                 handleToggleDevolucion(
                                   persona.id,
                                   persona.decodificador_devuelto
-                                )
-                              }
+                                );
+                              }}
                               className="shrink-0"
+                              onClick={(e) => e.stopPropagation()}
                             />
                             <div className="flex-1">
                               <div className="flex items-center gap-2">
-                                <button
-                                  onClick={() => setSelectedPersona(persona)}
-                                  className="font-medium hover:text-blue-600 hover:underline cursor-pointer text-left"
-                                >
+                                <p className="font-medium">
                                   {persona.apellido_nombre}
-                                </button>
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  className="h-6 w-6 text-muted-foreground hover:text-blue-600"
-                                  onClick={() => setSelectedPersona(persona)}
-                                  title="Ver detalles y llamadas"
-                                >
-                                  <Info className="h-3 w-3" />
-                                </Button>
+                                </p>
                                 {(persona.cantidad_decos || 0) > 1 && (
                                   <Badge
                                     variant="outline"
@@ -1197,36 +1169,26 @@ export default function CampaignDetailPage() {
                       renderItem={(persona) => (
                         <div
                           key={persona.id}
-                          className="flex items-center justify-between p-3 border border-border rounded-lg hover:bg-muted/50 bg-purple-50/50"
+                          className="flex items-center justify-between p-3 border border-border rounded-lg hover:bg-muted/50 bg-purple-50/50 cursor-pointer"
+                          onClick={() => setSelectedPersona(persona)}
                         >
                           <div className="flex items-center gap-3 flex-1">
                             <Checkbox
                               checked={persona.decodificador_devuelto}
-                              onCheckedChange={() =>
+                              onCheckedChange={(e) => {
                                 handleToggleDevolucion(
                                   persona.id,
                                   persona.decodificador_devuelto
-                                )
-                              }
+                                );
+                              }}
                               className="shrink-0"
+                              onClick={(e) => e.stopPropagation()}
                             />
                             <div className="flex-1">
                               <div className="flex items-center gap-2">
-                                <button
-                                  onClick={() => setSelectedPersona(persona)}
-                                  className="font-medium hover:text-blue-600 hover:underline cursor-pointer text-left"
-                                >
+                                <p className="font-medium">
                                   {persona.apellido_nombre}
-                                </button>
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  className="h-6 w-6 text-muted-foreground hover:text-blue-600"
-                                  onClick={() => setSelectedPersona(persona)}
-                                  title="Ver detalles y llamadas"
-                                >
-                                  <Info className="h-3 w-3" />
-                                </Button>
+                                </p>
                                 {(persona.cantidad_decos || 0) > 1 && (
                                   <Badge
                                     variant="outline"
