@@ -259,7 +259,7 @@ async function enviarKapsoWorkflow(
     }
 
     const result = await response.json();
-    const trackingId = result.data?.tracking_id;
+    const trackingId = result.data?.id;
 
     if (trackingId && !DRY_RUN) {
       await actualizarSupabase(
