@@ -19,7 +19,8 @@ import {
 } from "@/components/ui/table";
 import { supabase, Tables } from "@/lib/supabase";
 import { formatDateTimeArgentina, formatDuration, formatIsoDateToDmy } from "@/lib/utils/date";
-import { Phone } from "lucide-react";
+import { Phone, MessageSquare } from "lucide-react";
+import type { KapsoMessage } from "@/lib/types/kapso.types";
 
 type Persona = Tables<"personas_contactar">;
 type Llamada = Tables<"llamadas">;
@@ -214,6 +215,198 @@ function LlamadasTab({ personaId, personaConfirmado, personaFechaCompromiso }: {
   );
 }
 
+// Tab de Mensajes
+function MensajesTab({ personaId }: { personaId: string }) {
+  const [messages, setMessages] = useState<KapsoMessage[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!personaId) return;
+
+    const loadMessages = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+        const response = await fetch(`/api/personas/${personaId}/messages`);
+        
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({}));
+          if (response.status === 404) {
+            setError(errorData.message || "No hay mensajes disponibles");
+          } else {
+            setError("Error al cargar los mensajes");
+          }
+          setMessages([]);
+          setLoading(false);
+          return;
+        }
+
+        const data = await response.json();
+        // The API returns an array of messages directly
+        setMessages(Array.isArray(data) ? data : []);
+        setLoading(false);
+      } catch (error) {
+        console.error("Error loading messages:", error);
+        setError("Error al cargar los mensajes");
+        setLoading(false);
+      }
+    };
+
+    loadMessages();
+  }, [personaId]);
+
+  if (loading) {
+    return <div className="text-center py-8 text-muted-foreground">Cargando mensajes...</div>;
+  }
+
+  if (error) {
+    return (
+      <div className="text-center py-8 text-muted-foreground">
+        {error}
+      </div>
+    );
+  }
+
+  if (messages.length === 0) {
+    return (
+      <div className="text-center py-8 text-muted-foreground">
+        No hay mensajes disponibles para esta persona
+      </div>
+    );
+  }
+
+  const formatMessageTimestamp = (timestamp: string) => {
+    try {
+      // Timestamp is Unix timestamp as string
+      const date = new Date(parseInt(timestamp) * 1000);
+      return formatDateTimeArgentina(date.toISOString());
+    } catch {
+      return timestamp;
+    }
+  };
+
+  const getMessageContent = (message: KapsoMessage): string => {
+    if (message.text?.body) return message.text.body;
+    if (message.kapso?.content) return message.kapso.content;
+    
+    // Handle different message types
+    switch (message.type) {
+      case "image":
+        return message.image?.caption || "📷 Imagen";
+      case "video":
+        return message.video?.caption || "🎥 Video";
+      case "audio":
+        return "🎵 Audio";
+      case "document":
+        return message.document?.filename || "📄 Documento";
+      case "location":
+        return message.location?.name || "📍 Ubicación";
+      case "sticker":
+        return "😊 Sticker";
+      case "interactive":
+        if (message.interactive?.button_reply) {
+          return `🔘 ${message.interactive.button_reply.title}`;
+        }
+        if (message.interactive?.list_reply) {
+          return `📋 ${message.interactive.list_reply.title}`;
+        }
+        return "💬 Mensaje interactivo";
+      case "template":
+        return "📋 Plantilla";
+      case "reaction":
+        return `👍 ${message.reaction?.emoji || "Reacción"}`;
+      default:
+        return `Mensaje tipo: ${message.type}`;
+    }
+  };
+
+  return (
+    <div className="space-y-4 w-full">
+      <div className="space-y-3">
+        {messages.map((message) => {
+          const isInbound = message.kapso?.direction === "inbound";
+          const status = message.kapso?.status;
+          const hasMedia = message.kapso?.has_media;
+
+          return (
+            <div
+              key={message.id}
+              className={`flex gap-3 p-4 rounded-lg border ${
+                isInbound
+                  ? "bg-blue-50 border-blue-200"
+                  : "bg-gray-50 border-gray-200"
+              }`}
+            >
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center justify-between mb-1">
+                  <div className="flex items-center gap-2">
+                    <Badge
+                      variant="outline"
+                      className={
+                        isInbound
+                          ? "bg-blue-100 text-blue-700 border-blue-300"
+                          : "bg-gray-100 text-gray-700 border-gray-300"
+                      }
+                    >
+                      {isInbound ? "Recibido" : "Enviado"}
+                    </Badge>
+                    {status && (
+                      <Badge
+                        variant="outline"
+                        className={
+                          status === "delivered" || status === "read"
+                            ? "bg-green-100 text-green-700 border-green-300"
+                            : status === "failed"
+                            ? "bg-red-100 text-red-700 border-red-300"
+                            : "bg-yellow-100 text-yellow-700 border-yellow-300"
+                        }
+                      >
+                        {status === "delivered"
+                          ? "Entregado"
+                          : status === "read"
+                          ? "Leído"
+                          : status === "sent"
+                          ? "Enviado"
+                          : status === "failed"
+                          ? "Fallido"
+                          : status}
+                      </Badge>
+                    )}
+                    {hasMedia && (
+                      <Badge variant="outline" className="bg-purple-100 text-purple-700 border-purple-300">
+                        📎 Media
+                      </Badge>
+                    )}
+                  </div>
+                  <span className="text-xs text-muted-foreground">
+                    {formatMessageTimestamp(message.timestamp)}
+                  </span>
+                </div>
+                <p className="text-sm whitespace-pre-wrap break-words">
+                  {getMessageContent(message)}
+                </p>
+                {hasMedia && message.kapso?.media_url && (
+                  <div className="mt-2">
+                    <a
+                      href={message.kapso.media_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-xs text-blue-600 hover:underline"
+                    >
+                      Ver archivo adjunto
+                    </a>
+                  </div>
+                )}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 // Tab de Información General
 function InfoTab({ persona }: { persona: Persona }) {
   return (
@@ -277,11 +470,15 @@ export function PersonaDetailDialog({
         </DialogHeader>
 
         <Tabs defaultValue="info" className="w-full">
-          <TabsList className="grid w-full grid-cols-2">
+          <TabsList className="grid w-full grid-cols-3">
             <TabsTrigger value="info">Información</TabsTrigger>
             <TabsTrigger value="llamadas">
               <Phone className="h-4 w-4 mr-2" />
               Llamadas
+            </TabsTrigger>
+            <TabsTrigger value="mensajes">
+              <MessageSquare className="h-4 w-4 mr-2" />
+              Mensajes
             </TabsTrigger>
           </TabsList>
 
@@ -296,10 +493,15 @@ export function PersonaDetailDialog({
               personaFechaCompromiso={persona.fecha_compromiso}
             />
           </TabsContent>
+
+          <TabsContent value="mensajes" className="mt-4">
+            <MensajesTab personaId={persona.id} />
+          </TabsContent>
         </Tabs>
       </DialogContent>
     </Dialog>
   );
 }
+
 
 
