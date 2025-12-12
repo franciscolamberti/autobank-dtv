@@ -59,7 +59,7 @@ export class Kapso {
   static async executeWorkflow(
     workflowId: string,
     phoneNumber: string,
-    context: Record<string, string>
+    variables: Record<string, string>
   ) {
     const { data } = await kapsoClient.post(
       `/platform/v1/workflows/${workflowId}/executions`,
@@ -67,7 +67,7 @@ export class Kapso {
         workflow_execution: {
           phone_number: phoneNumber,
           phone_number_id: this.phoneNumberId,
-          context,
+          variables,
         },
       }
     );
