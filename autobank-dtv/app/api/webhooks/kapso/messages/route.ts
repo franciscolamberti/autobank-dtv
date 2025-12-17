@@ -3,6 +3,7 @@ import { startPickitWorkflowForPersona } from "@/lib/services/kapsoWorkflows.ser
 import { KapsoMessage } from "@/lib/types/kapso.types";
 import { stringifyError } from "@/lib/utils/errors";
 import { createLogger } from "@/lib/utils/logger";
+import { normalizeTelefonoPrincipal } from "@/lib/utils/phone";
 import { NextRequest, NextResponse } from "next/server";
 
 const logger = createLogger("kapso-messages-webhook");
@@ -37,22 +38,25 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const phoneNumber = payload.conversation.phone_number;
+    const rawPhoneNumber = payload.conversation.phone_number;
+    const normalizedPhoneNumber = normalizeTelefonoPrincipal(rawPhoneNumber);
 
     logger.info("Incoming Kapso message", {
       messageId: payload.message.id,
       conversationId: payload.conversation.id,
-      phoneNumber,
+      normalizedPhoneNumber,
       isNewConversation: payload.is_new_conversation,
     });
 
     const persona = await getPersonaWithPickitByTelefonoPrincipal(
-      phoneNumber,
+      normalizedPhoneNumber,
       logger
     );
 
     if (!persona) {
-      logger.warn("Persona not found for phone number", { phoneNumber });
+      logger.warn("Persona not found for phone number", {
+        normalizedPhoneNumber,
+      });
 
       return NextResponse.json(
         { error: "Persona not found for phone number" },
