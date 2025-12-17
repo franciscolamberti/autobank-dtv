@@ -218,3 +218,51 @@ export interface KapsoListMessagesResult {
   messages: KapsoMessage[];
   total: number;
 }
+
+export interface KapsoMessage {
+  message: Message;
+  conversation: Conversation;
+  is_new_conversation: boolean;
+  phone_number_id: string;
+}
+
+export interface Conversation {
+  id: string;
+  phone_number: string;
+  status: string;
+  last_active_at: Date;
+  created_at: Date;
+  updated_at: Date;
+  phone_number_id: string;
+  kapso: ConversationKapso;
+}
+
+export interface ConversationKapso {
+  contact_name: string;
+  messages_count: number;
+  last_message_id: string;
+  last_message_type: string;
+  last_message_timestamp: Date;
+  last_message_text: string;
+  last_inbound_at: Date;
+  last_outbound_at: null;
+}
+
+export interface Message {
+  id: string;
+  timestamp: string;
+  type: string;
+  text: {
+    body: string;
+  };
+  kapso: MessageKapso;
+}
+
+export interface MessageKapso {
+  direction: string;
+  status: string;
+  processing_status: string;
+  origin: string;
+  has_media: boolean;
+  content: string;
+}

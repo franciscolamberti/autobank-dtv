@@ -58,8 +58,20 @@ export class Kapso {
   static async executeWorkflow(
     workflowId: string,
     phoneNumber: string,
-    variables: Record<string, string>
+    variables: Record<string, string>,
+    context?: Record<string, string>
   ) {
+    const body = {
+      workflow_execution: {
+        phone_number: phoneNumber,
+        phone_number_id: this.phoneNumberId,
+        variables,
+        context
+      }
+    };
+
+    if(!context) delete body.workflow_execution.context;
+
     const { data } = await kapsoClient.post(
       `/platform/v1/workflows/${workflowId}/executions`,
       {
