@@ -15,6 +15,7 @@ export async function POST(request: NextRequest) {
     const secret = process.env.KAPSO_WEBHOOK_SECRET;
 
     try {
+      console.log({ rawBody, signature, secret });
       verifyKapsoWebhook(rawBody, signature, secret);
     } catch (err) {
       logger.error("Failed to verify webhook signature", {
